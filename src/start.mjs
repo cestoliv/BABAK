@@ -2,8 +2,6 @@
 // <reference 'zx/globals' />
 // <reference 'zx/experimental' />
 
-const log = require('why-is-node-running')
-
 import moment from 'moment'
 
 import { Matrix } from './matrix.mjs'
