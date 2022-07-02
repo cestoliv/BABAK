@@ -1,7 +1,7 @@
 // <reference 'zx/globals' />
 // <reference 'zx/experimental' />
 
-import moment from 'moment'
+import { DateTime } from 'luxon'
 import ora from 'ora'
 
 import { applyRetentionRules } from './retention.mjs'
@@ -9,7 +9,7 @@ import { applyRetentionRules } from './retention.mjs'
 $.verbose = false
 
 export async function runSSH(service) {
-	const	start_date = moment().format('YYYY-MM-DDTHH-mm-ss')
+	const	start_date = DateTime.now().toFormat("yyyy-LL-dd'T'HH-mm-ss")
 	var		spin = undefined
 
 	console.log(`${chalk.blue(`${chalk.bold(service.name)} (${start_date})`)}`)

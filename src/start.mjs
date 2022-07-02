@@ -2,7 +2,7 @@
 // <reference 'zx/globals' />
 // <reference 'zx/experimental' />
 
-import moment from 'moment'
+import { DateTime } from 'luxon'
 
 import { Matrix } from './matrix.mjs'
 import { runSSH } from './ssh.mjs'
@@ -25,7 +25,7 @@ for (let s = 0; s < config.services.length; s++) {
 		console.error(chalk.red(`${chalk.bold(service.type)} type not supported.`))
 }
 
-message = `🕐 ${moment().format("ddd DD MMMM YYYY")}\n\n${message}\n\n😉, Hypolite`
+message = `🕐 ${DateTime.now().toFormat("ccc dd LLLL yyyy")}\n\n${message}\n\n😉, Hypolite`
 
 console.log(`\n${chalk.green("message:")}\n${message}`)
 

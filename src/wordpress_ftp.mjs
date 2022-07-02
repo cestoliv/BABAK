@@ -2,7 +2,7 @@
 // <reference 'zx/experimental' />
 
 import ftp from 'basic-ftp'
-import moment from 'moment'
+import { DateTime } from 'luxon'
 import ora from 'ora'
 
 import { applyRetentionRules } from './retention.mjs'
@@ -43,7 +43,7 @@ async function createDumpScript(script_path, service) {
 }
 
 export async function runWordpressFtp(service) {
-	const	start_date = moment().format('YYYY-MM-DDTHH-mm-ss')
+	const	start_date = DateTime.now().toFormat("yyyy-LL-dd'T'HH-mm-ss")
 	const	backup_path = `../${service.backup_dir}/${start_date}`
 	const	client = new ftp.Client()
 	var		spin = undefined
