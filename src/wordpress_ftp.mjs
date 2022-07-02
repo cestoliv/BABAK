@@ -5,6 +5,8 @@ import ftp from 'basic-ftp'
 import moment from 'moment'
 import ora from 'ora'
 
+import { applyRetentionRules } from './retention.mjs'
+
 $.verbose = false
 
 const htaBlockSQL = `
@@ -132,8 +134,12 @@ export async function runWordpressFtp(service) {
 
 		cd(__dirname)
 
-		client.close()
+		spin = ora('Applying retention rules').start()
+		await applyRetentionRules(service.backup_dir)
+		spin.succeed()
+
 		console.log(chalk.green("done"))
+		client.close()
 		return `✅  ${service.name} (${archive_size})`
 	}
 	catch(err) {

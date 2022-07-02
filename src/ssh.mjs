@@ -4,6 +4,8 @@
 import moment from 'moment'
 import ora from 'ora'
 
+import { applyRetentionRules } from './retention.mjs'
+
 $.verbose = false
 
 export async function runSSH(service) {
@@ -57,6 +59,10 @@ export async function runSSH(service) {
 		await $`rm -rdf ${start_date}`
 
 		cd(__dirname)
+
+		spin = ora('Applying retention rules').start()
+		await applyRetentionRules(service.backup_dir)
+		spin.succeed()
 
 		console.log(chalk.green("done"))
 		return `✅  ${service.name} (${archive_size})`
