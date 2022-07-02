@@ -1,0 +1,21 @@
+{
+	"name": "automated-backups",
+	"version": "1.0.0",
+	"description": "",
+	"type": "module",
+	"main": "src/start.mjs",
+	"scripts": {
+		"start": "zx --experimental src/start.mjs"
+	},
+	"author": "cestoliv",
+	"license": "MIT",
+	"dependencies": {
+		"basic-ftp": "^4.6.6",
+		"matrix-js-sdk": "^18.1.0",
+		"moment": "^2.29.3",
+		"node-localstorage": "^2.2.1",
+		"olm": "https://packages.matrix.org/npm/olm/olm-3.2.1.tgz",
+		"ora": "^6.1.1",
+		"why-is-node-running": "^2.2.2"
+	}
+}
