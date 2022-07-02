@@ -1,0 +1,10 @@
+stages:
+- test
+
+sast:
+  stage: test
+  retry: 2
+include:
+- template: Security/SAST.gitlab-ci.yml
+- template: Security/Dependency-Scanning.gitlab-ci.yml
+- template: Security/Secret-Detection.gitlab-ci.yml
