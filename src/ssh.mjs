@@ -58,8 +58,6 @@ export async function runSSH(service) {
 		// Delete downloaded
 		await $`rm -rdf ${start_date}`
 
-		cd(__dirname)
-
 		spin = ora('Applying retention rules').start()
 		await applyRetentionRules(service.backup_dir)
 		spin.succeed()

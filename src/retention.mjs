@@ -26,6 +26,7 @@ const days_to_keep = [
 ]
 
 export async function applyRetentionRules(directory_path) {
+	cd(path.join(__dirname, "../"))
 	const dir_backups = await glob(`${directory_path}/*.tar.bz2`)
 
 	dir_backups.forEach(dir_backup => {

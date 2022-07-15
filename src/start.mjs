@@ -15,6 +15,7 @@ let message = ''
 
 for (let s = 0; s < config.services.length; s++) {
 	const	service = config.services[s]
+	cd(path.join(__dirname, "../"))
 
 	message +=  message == '' ? '' : '\n'
 	if (service.type == "ssh")

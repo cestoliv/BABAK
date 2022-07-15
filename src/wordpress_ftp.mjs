@@ -44,7 +44,7 @@ async function createDumpScript(script_path, service) {
 
 export async function runWordpressFtp(service) {
 	const	start_date = DateTime.now().toFormat("yyyy-LL-dd'T'HH-mm-ss")
-	const	backup_path = `../${service.backup_dir}/${start_date}`
+	const	backup_path = `${service.backup_dir}/${start_date}`
 	const	client = new ftp.Client()
 	var		spin = undefined
 
@@ -119,7 +119,7 @@ export async function runWordpressFtp(service) {
 		spin.succeed()
 
 		/// ARCHIVE
-		cd(`../${service.backup_dir}`)
+		cd(service.backup_dir)
 
 		// Create archive
 		spin = ora('Creating an archive').start()
@@ -131,8 +131,6 @@ export async function runWordpressFtp(service) {
 
 		// Delete downloaded
 		await $`rm -rdf ${start_date}`
-
-		cd(__dirname)
 
 		spin = ora('Applying retention rules').start()
 		await applyRetentionRules(service.backup_dir)
