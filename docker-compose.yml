@@ -1,0 +1,10 @@
+version: "3.9"
+services:
+  babak:
+    image: babak
+    build: .
+    volumes:
+      - ./backups:/babak/backups
+      - ./config.yml:/babak/config.yml
+      - ./conf/kubeconf.yml:/root/.kube/config
+      - ./conf/ssh:/root/.ssh

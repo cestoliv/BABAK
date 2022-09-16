@@ -1,5 +1,6 @@
 node_modules/
 store/
 
+backups
 config.yml
 **/*.tar.bz2

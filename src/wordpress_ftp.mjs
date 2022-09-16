@@ -130,7 +130,7 @@ export async function runWordpressFtp(service) {
 		spin.succeed()
 
 		// Delete downloaded
-		await $`rm -rdf ${start_date}`
+		await $`rm -rf ${start_date}`
 
 		spin = ora('Applying retention rules').start()
 		await applyRetentionRules(service.backup_dir)

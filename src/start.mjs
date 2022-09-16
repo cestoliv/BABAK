@@ -7,6 +7,7 @@ import { DateTime } from 'luxon'
 import { Matrix } from './matrix.mjs'
 import { runSSH } from './ssh.mjs'
 import { runWordpressFtp } from './wordpress_ftp.mjs'
+import { runLocal } from './local.mjs'
 
 const configFile = fs.readFileSync('./config.yml', 'utf8')
 const config = YAML.parse(configFile)
@@ -22,6 +23,8 @@ for (let s = 0; s < config.services.length; s++) {
 		message += await runSSH(service)
 	else if (service.type == "wordpress_ftp")
 		message += await runWordpressFtp(service)
+	else if (service.type == "local")
+		message += await runLocal(service)
 	else
 		console.error(chalk.red(`${chalk.bold(service.type)} type not supported.`))
 }
