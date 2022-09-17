@@ -30,7 +30,7 @@ async function hta_removeSql(hta_path) {
 	let hta = await fs.readFile(hta_path, 'utf-8')
 
 	// remove block
-	hta = hta.replace(htaBlockSQL, '')
+	hta = hta.replaceAll(htaBlockSQL, '')
 
 	await fs.writeFile(hta_path, hta)
 }
