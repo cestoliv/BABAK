@@ -3,14 +3,14 @@ FROM alpine:edge
 WORKDIR /babak
 
 # Install dependencies
-RUN apk add --no-cache nodejs npm rsync openssh
+RUN apk add --no-cache nodejs npm rsync openssh curl
 RUN apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/testing/ \
 	kubectl
 
 # Create scripts
 RUN echo $'#!/bin/sh \n\
 if [ -d "/root/.ssh" ]; then \n\
-	chown -R 0:0 /root/.ssh; chmod -R 700 /root/.ssh; chmod 600 /root/.ssh/id_rsa; chmod 644 /root/.ssh/id_rsa.pub; chmod 600 /root/.ssh/config; \n\
+	chown -R $(id -u):$(id -g) /root/.ssh; chmod -R 700 /root/.ssh; chmod 600 /root/.ssh/id_rsa; chmod 644 /root/.ssh/id_rsa.pub; chmod 600 /root/.ssh/config; \n\
 	echo "SSH config files are ready"; \n\
 fi \
 ' > /babak/set_perms.sh
