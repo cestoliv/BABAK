@@ -5,6 +5,7 @@ import { DateTime } from 'luxon'
 import ora from 'ora'
 
 import { applyRetentionRules } from './retention.mjs'
+import { retrieve } from './retrieve.mjs'
 
 $.verbose = false
 
@@ -29,19 +30,8 @@ export async function runLocal(service) {
 
 		// Download backup
 		if (service.retrieve) {
-			let rsync_args = []
-			rsync_args.push(`-a`)
-			if (service.retrieve.host == "")
-				rsync_args.push(`${service.retrieve.path}`)
-			else
-				rsync_args.push(`${service.retrieve.host}:${service.retrieve.path}`)
-			rsync_args.push(`${service.backup_dir}/${start_date}`)
-
 			spin = ora('Downloading backup').start()
-			if (service.retrieve.rsync_path == "")
-				await $`rsync ${rsync_args}`
-			else
-				await $`rsync --rsync-path=${service.retrieve.rsync_path} ${rsync_args}`
+			await retrieve(service.retrieve, `${service.backup_dir}/${start_date}`, service.ssh_host)
 			spin.succeed()
 		}
 

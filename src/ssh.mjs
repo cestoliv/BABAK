@@ -5,6 +5,7 @@ import { DateTime } from 'luxon'
 import ora from 'ora'
 
 import { applyRetentionRules } from './retention.mjs'
+import { retrieve } from './retrieve.mjs'
 
 $.verbose = false
 
@@ -26,17 +27,11 @@ export async function runSSH(service) {
 		}
 
 		// Download backup
-		let rsync_args = []
-		rsync_args.push(`-a`)
-		rsync_args.push(`${service.ssh_host}:${service.retrieve.path}`)
-		rsync_args.push(`${service.backup_dir}/${start_date}`)
-
-		spin = ora('Downloading backup').start()
-		if (service.retrieve.rsync_path == "")
-			await $`rsync ${rsync_args}`
-		else
-			await $`rsync --rsync-path=${service.retrieve.rsync_path} ${rsync_args}`
-		spin.succeed()
+		if (service.retrieve) {
+			spin = ora('Downloading backup').start()
+			await retrieve(service.retrieve, `${service.backup_dir}/${start_date}`, service.ssh_host)
+			spin.succeed()
+		}
 
 		// Run after command
 		if (service.commands.after != "") {
