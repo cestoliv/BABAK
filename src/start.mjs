@@ -8,9 +8,12 @@ import { Matrix } from './matrix.mjs'
 import { runSSH } from './ssh.mjs'
 import { runWordpressFtp } from './wordpress_ftp.mjs'
 import { runLocal } from './local.mjs'
+import { getSystemConfig } from './utils.js'
 
 const configFile = fs.readFileSync('./config.yml', 'utf8')
 const config = YAML.parse(configFile)
+
+const systemConfig = getSystemConfig(config.system)
 
 let message = ''
 
@@ -20,11 +23,11 @@ for (let s = 0; s < config.services.length; s++) {
 
 	message +=  message == '' ? '' : '\n'
 	if (service.type == "ssh")
-		message += await runSSH(service)
+		message += await runSSH(systemConfig, service)
 	else if (service.type == "wordpress_ftp")
-		message += await runWordpressFtp(service)
+		message += await runWordpressFtp(systemConfig, service)
 	else if (service.type == "local")
-		message += await runLocal(service)
+		message += await runLocal(systemConfig, service)
 	else
 		console.error(chalk.red(`${chalk.bold(service.type)} type not supported.`))
 }

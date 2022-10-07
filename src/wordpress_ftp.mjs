@@ -42,7 +42,7 @@ async function createDumpScript(script_path, service) {
 	?>`)
 }
 
-export async function runWordpressFtp(service) {
+export async function runWordpressFtp(systemConfig, service) {
 	const	start_date = DateTime.now().toFormat("yyyy-LL-dd'T'HH-mm-ss")
 	const	backup_path = `${service.backup_dir}/${start_date}`
 	const	client = new ftp.Client()
