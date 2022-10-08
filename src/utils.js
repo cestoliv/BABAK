@@ -2,7 +2,7 @@ import { resolve } from "path"
 
 export function getSystemConfig(yamlConf) {
 	let defaultConfig = {
-		temp_dir: "/tmp",
+		temp_dir: "/tmp/babak",
 		backup_dir: resolve("./backups"),
 	}
 	return Object.assign(defaultConfig, {

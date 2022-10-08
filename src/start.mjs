@@ -44,4 +44,7 @@ if (config.hasOwnProperty("matrix")) {
 	console.log(chalk.green("sent with Matrix"))
 }
 
+// Delete temp dir
+await $`rm -rf ${systemConfig.temp_dir}`
+
 process.exit()

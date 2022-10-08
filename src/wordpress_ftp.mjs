@@ -133,7 +133,7 @@ export async function runWordpressFtp(systemConfig, service) {
 		spin.succeed()
 
 		// Delete downloaded
-		//await $`rm -rf ${temp_dir}`
+		await $`rm -rf ${path.join(temp_dir, '..')}`
 
 		spin = ora('Applying retention rules').start()
 		await applyRetentionRules(path.join(backup_dir, '..'))
