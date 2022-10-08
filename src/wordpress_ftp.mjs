@@ -64,9 +64,8 @@ export async function runWordpressFtp(systemConfig, service) {
 		})
 		await client.cd(service.ftp.dir)
 
-		// Create dirs
+		// Create dir
 		await $`mkdir -p ${temp_dir}`
-		await $`mkdir -p ${path.join(backup_dir, '..')}`
 
 		spin = ora('Uploading scripts to the server').start()
 		// Modify .htaccess to forbid .sql files download
@@ -126,6 +125,7 @@ export async function runWordpressFtp(systemConfig, service) {
 
 		// Create archive
 		spin = ora('Creating an archive').start()
+		await $`mkdir -p ${path.join(backup_dir, '..')}`
 		await $`tar -cjf ${backup_dir}.tar.bz2 ${start_date}`
 
 		// Get archive size

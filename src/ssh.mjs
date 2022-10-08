@@ -19,9 +19,8 @@ export async function runSSH(systemConfig, service) {
 	const backup_dir = path.join(systemConfig.backup_dir, service.backup_dir, start_date)
 
 	try {
-		// Create dirs
+		// Create dir
 		await $`mkdir -p ${temp_dir}`
-		await $`mkdir -p ${path.join(backup_dir, '..')}`
 
 		// Run before command
 		if (service.commands.before != "") {
@@ -48,6 +47,7 @@ export async function runSSH(systemConfig, service) {
 
 		// Create archive
 		spin = ora('Creating an archive').start()
+		await $`mkdir -p ${path.join(backup_dir, '..')}`
 		await $`tar -cjf ${backup_dir}.tar.bz2 ${start_date}`
 
 		// Get archive size
