@@ -3,13 +3,14 @@
 
 import { DateTime } from 'luxon'
 import ora from 'ora'
+import path from 'path'
 
-import { applyRetentionRules } from './retention.mjs'
-import { retrieve } from './retrieve.mjs'
+import { applyRetentionRules } from '../retention.mjs'
+import { retrieve } from '../retrieve.mjs'
 
 $.verbose = false
 
-export async function runSSH(systemConfig, service) {
+export async function runLocal(systemConfig, service) {
 	const	start_date = DateTime.now().toFormat("yyyy-LL-dd'T'HH-mm-ss")
 	var		spin = undefined
 
@@ -23,23 +24,27 @@ export async function runSSH(systemConfig, service) {
 		await $`mkdir -p ${temp_dir}`
 
 		// Run before command
-		if (service.commands.before != "") {
-			spin = ora('Running "before" command on server').start()
-			await $`ssh ${service.ssh_host} ${service.commands.before}`
+		if (service.commands.before && service.commands.before != "") {
+			spin = ora('Running "before" command locally').start()
+			cd(temp_dir)
+			await $`sh -c ${service.commands.before}`
+			cd(path.join(__dirname, '..'))
 			spin.succeed()
 		}
 
 		// Download backup
 		if (service.retrieve) {
 			spin = ora('Downloading backup').start()
-			await retrieve(service.retrieve, temp_dir, service.ssh_host)
+			await retrieve(service.retrieve, temp_dir, undefined)
 			spin.succeed()
 		}
 
 		// Run after command
-		if (service.commands.after != "") {
-			spin = ora('Running "after" command on server').start()
-			await $`ssh ${service.ssh_host} ${service.commands.after}`
+		if (service.commands.after && service.commands.after != "") {
+			spin = ora('Running "after" command on locally').start()
+			cd(temp_dir)
+			await $`sh -c ${service.commands.after}`
+			cd(path.join(__dirname, '..'))
 			spin.succeed()
 		}
 

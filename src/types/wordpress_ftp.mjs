@@ -5,7 +5,7 @@ import ftp from 'basic-ftp'
 import { DateTime } from 'luxon'
 import ora from 'ora'
 
-import { applyRetentionRules } from './retention.mjs'
+import { applyRetentionRules } from '../retention.mjs'
 
 $.verbose = false
 

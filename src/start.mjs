@@ -5,9 +5,9 @@
 import { DateTime } from 'luxon'
 
 import { Matrix } from './matrix.mjs'
-import { runSSH } from './ssh.mjs'
-import { runWordpressFtp } from './wordpress_ftp.mjs'
-import { runLocal } from './local.mjs'
+import { runSSH } from './types/ssh.mjs'
+import { runWordpressFtp } from './types/wordpress_ftp.mjs'
+import { runLocal } from './types/local.mjs'
 import { getSystemConfig } from './utils.js'
 
 const configFile = fs.readFileSync('./config.yml', 'utf8')
