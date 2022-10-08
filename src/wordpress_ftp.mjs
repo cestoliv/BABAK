@@ -44,13 +44,15 @@ async function createDumpScript(script_path, service) {
 
 export async function runWordpressFtp(systemConfig, service) {
 	const	start_date = DateTime.now().toFormat("yyyy-LL-dd'T'HH-mm-ss")
-	const	backup_path = `${service.backup_dir}/${start_date}`
 	const	client = new ftp.Client()
 	var		spin = undefined
 
 	client.ftp.verbose = false
 
 	console.log(`${chalk.blue(`${chalk.bold(service.name)} (${start_date})`)}`)
+
+	const temp_dir = path.join(systemConfig.temp_dir, service.backup_dir, start_date)
+	const backup_dir = path.join(systemConfig.backup_dir, service.backup_dir, start_date)
 
 	try {
 		// Connect to FTP
@@ -62,18 +64,19 @@ export async function runWordpressFtp(systemConfig, service) {
 		})
 		await client.cd(service.ftp.dir)
 
-		// Create dir
-		await $`mkdir -p ${backup_path}`
+		// Create dirs
+		await $`mkdir -p ${temp_dir}`
+		await $`mkdir -p ${path.join(backup_dir, '..')}`
 
 		spin = ora('Uploading scripts to the server').start()
 		// Modify .htaccess to forbid .sql files download
-		await client.downloadTo(`${backup_path}/.htaccess`, '.htaccess')
-		await hta_addSql(`${backup_path}/.htaccess`)
-		await client.uploadFrom(`${backup_path}/.htaccess`, '.htaccess')
+		await client.downloadTo(`${temp_dir}/.htaccess`, '.htaccess')
+		await hta_addSql(`${temp_dir}/.htaccess`)
+		await client.uploadFrom(`${temp_dir}/.htaccess`, '.htaccess')
 
 		// Put the PHP dump script on the server
-		await createDumpScript(`${backup_path}/db-dump.php`, service)
-		await client.uploadFrom(`${backup_path}/db-dump.php`, 'db-dump.php')
+		await createDumpScript(`${temp_dir}/db-dump.php`, service)
+		await client.uploadFrom(`${temp_dir}/db-dump.php`, 'db-dump.php')
 		spin.succeed()
 
 		spin = ora('Waiting for the database dump to exist on the server').start()
@@ -98,7 +101,7 @@ export async function runWordpressFtp(systemConfig, service) {
 
 		// Download DUMP
 		spin = ora('Downloading the database dump').start()
-		await client.downloadTo(`${backup_path}/db.sql`, 'db.sql')
+		await client.downloadTo(`${temp_dir}/db.sql`, 'db.sql')
 		spin.succeed()
 
 		spin = ora('Removing scripts and dump from server').start()
@@ -106,34 +109,34 @@ export async function runWordpressFtp(systemConfig, service) {
 		await client.remove('db.sql')
 
 		// Put back the original .htaccess file
-		await hta_removeSql(`${backup_path}/.htaccess`)
-		await client.uploadFrom(`${backup_path}/.htaccess`, '.htaccess')
+		await hta_removeSql(`${temp_dir}/.htaccess`)
+		await client.uploadFrom(`${temp_dir}/.htaccess`, '.htaccess')
 		spin.succeed()
 
 		// Remove working files
-		await $`cd ${backup_path} && rm .htaccess db-dump.php`
+		await $`rm ${temp_dir}/.htaccess ${temp_dir}/db-dump.php`
 
 		// Download WWW dir (with db.sql inside)
 		spin = ora('Downloading www directory').start()
-		await client.downloadToDir(`${backup_path}`)
+		await client.downloadToDir(`${temp_dir}`)
 		spin.succeed()
 
 		/// ARCHIVE
-		cd(service.backup_dir)
+		cd(path.join(temp_dir, '..'))
 
 		// Create archive
 		spin = ora('Creating an archive').start()
-		await $`tar -cjf ${start_date}.tar.bz2 ${start_date}`
+		await $`tar -cjf ${backup_dir}.tar.bz2 ${start_date}`
 
 		// Get archive size
-		let archive_size = await $`du -h ${start_date}.tar.bz2 | cut -f 1 | tr '\n' ' ' | sed '$s/ $//'`
+		let archive_size = await $`du -h ${backup_dir}.tar.bz2 | cut -f 1 | tr '\n' ' ' | sed '$s/ $//'`
 		spin.succeed()
 
 		// Delete downloaded
-		await $`rm -rf ${start_date}`
+		//await $`rm -rf ${temp_dir}`
 
 		spin = ora('Applying retention rules').start()
-		await applyRetentionRules(service.backup_dir)
+		await applyRetentionRules(path.join(backup_dir, '..'))
 		spin.succeed()
 
 		console.log(chalk.green("done"))
