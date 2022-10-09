@@ -3,26 +3,30 @@
 
 import { DateTime } from 'luxon'
 import ora from 'ora'
+import path from 'path'
 
-import { applyRetentionRules } from './retention.mjs'
-import { retrieve } from './retrieve.mjs'
+import { applyRetentionRules } from '../retention.mjs'
+import { retrieve } from '../retrieve.mjs'
 
 $.verbose = false
 
-export async function runLocal(service) {
+export async function runLocal(systemConfig, service) {
 	const	start_date = DateTime.now().toFormat("yyyy-LL-dd'T'HH-mm-ss")
 	var		spin = undefined
 
 	console.log(`${chalk.blue(`${chalk.bold(service.name)} (${start_date})`)}`)
 
+	const temp_dir = path.join(systemConfig.temp_dir, service.backup_dir, start_date)
+	const backup_dir = path.join(systemConfig.backup_dir, service.backup_dir, start_date)
+
 	try {
 		// Create dir
-		await $`mkdir -p ${service.backup_dir}/${start_date}`
+		await $`mkdir -p ${temp_dir}`
 
 		// Run before command
 		if (service.commands.before && service.commands.before != "") {
 			spin = ora('Running "before" command locally').start()
-			cd(`${service.backup_dir}/${start_date}`)
+			cd(temp_dir)
 			await $`sh -c ${service.commands.before}`
 			cd(path.join(__dirname, '..'))
 			spin.succeed()
@@ -31,34 +35,35 @@ export async function runLocal(service) {
 		// Download backup
 		if (service.retrieve) {
 			spin = ora('Downloading backup').start()
-			await retrieve(service.retrieve, `${service.backup_dir}/${start_date}`, service.ssh_host)
+			await retrieve(service.retrieve, temp_dir, undefined)
 			spin.succeed()
 		}
 
 		// Run after command
 		if (service.commands.after && service.commands.after != "") {
 			spin = ora('Running "after" command on locally').start()
-			cd(`${service.backup_dir}/${start_date}`)
+			cd(temp_dir)
 			await $`sh -c ${service.commands.after}`
 			cd(path.join(__dirname, '..'))
 			spin.succeed()
 		}
 
-		cd(service.backup_dir)
+		cd(path.join(temp_dir, '..'))
 
 		// Create archive
 		spin = ora('Creating an archive').start()
-		await $`tar -cjf ${start_date}.tar.bz2 ${start_date}`
+		await $`mkdir -p ${path.join(backup_dir, '..')}`
+		await $`tar -cjf ${backup_dir}.tar.bz2 ${start_date}`
 
 		// Get archive size
-		let archive_size = await $`du -h ${start_date}.tar.bz2 | cut -f 1 | tr '\n' ' ' | sed '$s/ $//'`
+		let archive_size = await $`du -h ${backup_dir}.tar.bz2 | cut -f 1 | tr '\n' ' ' | sed '$s/ $//'`
 		spin.succeed()
 
 		// Delete downloaded
-		await $`rm -rf ${start_date}`
+		await $`rm -rf ${path.join(temp_dir, '..')}`
 
 		spin = ora('Applying retention rules').start()
-		await applyRetentionRules(service.backup_dir)
+		await applyRetentionRules(path.join(backup_dir, '..'))
 		spin.succeed()
 
 		console.log(chalk.green("done"))
