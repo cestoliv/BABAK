@@ -24,7 +24,7 @@ export async function runLocal(systemConfig, service) {
 		await $`mkdir -p ${temp_dir}`
 
 		// Run before command
-		if (service.commands.before && service.commands.before != "") {
+		if (service.commands && service.commands.before && service.commands.before != "") {
 			spin = ora('Running "before" command locally').start()
 			cd(temp_dir)
 			await $`sh -c ${service.commands.before}`
@@ -40,7 +40,7 @@ export async function runLocal(systemConfig, service) {
 		}
 
 		// Run after command
-		if (service.commands.after && service.commands.after != "") {
+		if (service.commands && service.commands.after && service.commands.after != "") {
 			spin = ora('Running "after" command on locally').start()
 			cd(temp_dir)
 			await $`sh -c ${service.commands.after}`

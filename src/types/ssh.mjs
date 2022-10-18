@@ -23,7 +23,7 @@ export async function runSSH(systemConfig, service) {
 		await $`mkdir -p ${temp_dir}`
 
 		// Run before command
-		if (service.commands.before != "") {
+		if (service.commands && service.commands.before != "") {
 			spin = ora('Running "before" command on server').start()
 			await $`ssh ${service.ssh_host} ${service.commands.before}`
 			spin.succeed()
@@ -37,7 +37,7 @@ export async function runSSH(systemConfig, service) {
 		}
 
 		// Run after command
-		if (service.commands.after != "") {
+		if (service.commands && service.commands.after != "") {
 			spin = ora('Running "after" command on server').start()
 			await $`ssh ${service.ssh_host} ${service.commands.after}`
 			spin.succeed()
