@@ -147,7 +147,8 @@ export async function runWordpressFtp(systemConfig, service) {
 		try {
 			client.close()
 		} catch (e) {}
-		spin.fail()
+		if (spin)
+			spin.fail()
 		return `❌  ${service.name} (${err.toString().replace(/\n/g, '')})`
 	}
 }

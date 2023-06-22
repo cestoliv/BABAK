@@ -70,7 +70,8 @@ export async function runLocal(systemConfig, service) {
 		return `✅  ${service.name} (${archive_size})`
 	}
 	catch (err) {
-		spin.fail()
+		if (spin)
+			spin.fail()
 		return `❌  ${service.name} (${err.toString().replace(/\n/g, '')})`
 	}
 }
