@@ -3,7 +3,7 @@ FROM alpine:edge
 WORKDIR /babak
 
 # Install dependencies
-RUN apk add --no-cache nodejs npm rsync openssh curl
+RUN apk add --no-cache bash nodejs npm rsync openssh curl
 RUN apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/testing/ \
 	kubectl
 
