@@ -27,7 +27,7 @@ const days_to_keep = [
 
 export async function applyRetentionRules(directory_path) {
 	cd(path.join(__dirname, "../"))
-	const dir_backups = await glob(`${directory_path}/*.tar.bz2`)
+	const dir_backups = await glob(`${directory_path}/*.tar.bz2*`)
 
 	dir_backups.forEach(dir_backup => {
 		const backup_date = dir_backup.split('/').pop().split('T')[0]
@@ -37,6 +37,18 @@ export async function applyRetentionRules(directory_path) {
 			if (day_to_keep.toFormat('yyyy-LL-dd') == backup_date) {
 				keep_backup = true
 				return
+			}
+		})
+
+		// If it's not the last backup of the day, delete it
+		dir_backups.forEach(dir_backup2 => {
+			// Compare the date
+			if (dir_backup2.split('/').pop().split('T')[0] == backup_date) {
+				// Compare the time
+				if (dir_backup2.split('/').pop().split('T')[1] > dir_backup.split('/').pop().split('T')[1]) {
+					keep_backup = false
+					return
+				}
 			}
 		})
 

@@ -124,16 +124,22 @@ export async function runWordpressFtp(systemConfig, service) {
 		cd(path.join(temp_dir, '..'))
 
 		// Create archive
+		let archive_name = `${backup_dir}.tar.bz2`
 		spin = ora('Creating an archive').start()
 		await $`mkdir -p ${path.join(backup_dir, '..')}`
-		await $`tar -cjf ${backup_dir}.tar.bz2 ${start_date}`
+		await $`tar -cjf ${archive_name} ${start_date}`
 
-		// Get archive size
-		let archive_size = await $`du -h ${backup_dir}.tar.bz2 | cut -f 1 | tr '\n' ' ' | sed '$s/ $//'`
-		spin.succeed()
+		cd(path.join(__dirname, '..'))
 
 		// Delete downloaded
 		await $`rm -rf ${path.join(temp_dir, '..')}`
+
+		// Encrypt archive
+		archive_name = await encrypt(systemConfig, archive_name)
+
+		// Get archive size
+		let archive_size = await $`du -h ${archive_name}| cut -f 1 | tr '\n' ' ' | sed '$s/ $//'`
+		spin.succeed()
 
 		spin = ora('Applying retention rules').start()
 		await applyRetentionRules(path.join(backup_dir, '..'))
