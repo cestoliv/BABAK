@@ -6,6 +6,7 @@ import { DateTime } from 'luxon'
 import ora from 'ora'
 
 import { applyRetentionRules } from '../retention.mjs'
+import { encrypt } from '../entrypt.mjs'
 
 $.verbose = false
 
