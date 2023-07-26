@@ -19,6 +19,12 @@ let message = ''
 
 for (let s = 0; s < config.services.length; s++) {
 	const	service = config.services[s]
+
+	if (service.hasOwnProperty("enabled") && !service.enabled) {
+		console.log(chalk.yellow(`\n${service.name} is disabled.`))
+		continue
+	}
+
 	cd(path.join(__dirname, "../"))
 
 	message +=  message == '' ? '' : '\n'
