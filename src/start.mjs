@@ -3,6 +3,7 @@
 // <reference 'zx/experimental' />
 
 import { DateTime } from 'luxon'
+import dotenv from 'dotenv'
 
 import { Matrix } from './matrix.mjs'
 import { runSSH } from './types/ssh.mjs'
@@ -10,10 +11,14 @@ import { runWordpressFtp } from './types/wordpress_ftp.mjs'
 import { runLocal } from './types/local.mjs'
 import { getSystemConfig } from './utils.js'
 
+dotenv.config()
 const configFile = fs.readFileSync('./config.yml', 'utf8')
 const config = YAML.parse(configFile)
 
 const systemConfig = getSystemConfig(config.system)
+
+if (!process.env.hasOwnProperty("ENCRYPTION_KEY"))
+	console.log(chalk.yellow("No ENCRYPTION_KEY, backup will not be encrypted."))
 
 let message = ''
 
@@ -21,7 +26,7 @@ for (let s = 0; s < config.services.length; s++) {
 	const	service = config.services[s]
 
 	if (service.hasOwnProperty("enabled") && !service.enabled) {
-		console.log(chalk.yellow(`\n${service.name} is disabled.`))
+		console.log(chalk.yellow(`${service.name} is disabled.\n`))
 		continue
 	}
 

@@ -5,3 +5,4 @@ backups
 tmp
 config.yml
 **/*.tar.bz2
+.env
