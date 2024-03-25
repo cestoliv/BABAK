@@ -12,7 +12,11 @@ import { runLocal } from './types/local.mjs'
 import { getSystemConfig } from './utils.js'
 
 dotenv.config()
-const configFile = fs.readFileSync('./config.yml', 'utf8')
+
+const args = process.argv.slice(4)
+const configFilePath = args[0] || 'config.yml'
+console.log(`Using configuration file: ${configFilePath}`)
+const configFile = fs.readFileSync(configFilePath, 'utf8')
 const config = YAML.parse(configFile)
 
 const systemConfig = getSystemConfig(config.system)
