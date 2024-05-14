@@ -1,14 +1,14 @@
 // <reference 'zx/globals' />
 // <reference 'zx/experimental' />
 
-import ftp from 'basic-ftp'
-import { DateTime } from 'luxon'
-import ora from 'ora'
+import ftp from 'basic-ftp';
+import { DateTime } from 'luxon';
+import ora from 'ora';
 
-import { applyRetentionRules } from '../retention.mjs'
-import { encrypt } from '../entrypt.mjs'
+import { applyRetentionRules } from '../retention.mjs';
+import { duplicity } from '../duplicity.mjs';
 
-$.verbose = false
+$.verbose = false;
 
 const htaBlockSQL = `
 # BEGIN BlockSQLDownload
@@ -16,44 +16,54 @@ const htaBlockSQL = `
 Order allow,deny
 Deny from all
 </Files>
-# END BlockSQLDownload`
+# END BlockSQLDownload`;
 
 async function hta_addSql(hta_path) {
-	let hta = await fs.readFile(hta_path, 'utf-8')
+	let hta = await fs.readFile(hta_path, 'utf-8');
 
 	// add block
-	if (!hta.includes(htaBlockSQL))
-		hta = `${hta}${htaBlockSQL}`
-	await fs.writeFile(hta_path, hta)
+	if (!hta.includes(htaBlockSQL)) hta = `${hta}${htaBlockSQL}`;
+	await fs.writeFile(hta_path, hta);
 }
 
 async function hta_removeSql(hta_path) {
-	let hta = await fs.readFile(hta_path, 'utf-8')
+	let hta = await fs.readFile(hta_path, 'utf-8');
 
 	// remove block
-	hta = hta.replaceAll(htaBlockSQL, '')
+	hta = hta.replaceAll(htaBlockSQL, '');
 
-	await fs.writeFile(hta_path, hta)
+	await fs.writeFile(hta_path, hta);
 }
 
 async function createDumpScript(script_path, service) {
-	await fs.writeFile(script_path, `<?
+	await fs.writeFile(
+		script_path,
+		`<?
 	system("mysqldump --host=${service.database.host} --user=${service.database.user} --password=${service.database.password} ${service.database.name} > db.sql");
 	echo "started";
-	?>`)
+	?>`,
+	);
 }
 
 export async function runWordpressFtp(systemConfig, service) {
-	const	start_date = DateTime.now().toFormat("yyyy-LL-dd'T'HH-mm-ss")
-	const	client = new ftp.Client()
-	var		spin = undefined
+	const start_date = DateTime.now().toFormat("yyyy-LL-dd'T'HH-mm-ss");
+	const client = new ftp.Client();
+	var spin = undefined;
 
-	client.ftp.verbose = false
+	client.ftp.verbose = false;
 
-	console.log(`${chalk.blue(`${chalk.bold(service.name)} (${start_date})`)}`)
+	console.log(`${chalk.blue(`${chalk.bold(service.name)} (${start_date})`)}`);
 
-	const temp_dir = path.join(systemConfig.temp_dir, service.backup_dir, start_date)
-	const backup_dir = path.join(systemConfig.backup_dir, service.backup_dir, start_date)
+	const temp_dir = path.join(
+		systemConfig.temp_dir,
+		service.backup_dir,
+		start_date,
+	);
+	const backup_dir = path.join(
+		systemConfig.backup_dir,
+		service.backup_dir,
+		start_date,
+	);
 
 	try {
 		// Connect to FTP
@@ -61,101 +71,101 @@ export async function runWordpressFtp(systemConfig, service) {
 			host: service.ftp.host,
 			user: service.ftp.user,
 			password: service.ftp.password,
-			secure: service.ftp.secure
-		})
-		await client.cd(service.ftp.dir)
+			secure: service.ftp.secure,
+		});
+		await client.cd(service.ftp.dir);
 
 		// Create dir
-		await $`mkdir -p ${temp_dir}`
+		await $`mkdir -p ${temp_dir}`;
 
-		spin = ora('Uploading scripts to the server').start()
+		spin = ora('Uploading scripts to the server').start();
 		// Modify .htaccess to forbid .sql files download
-		await client.downloadTo(`${temp_dir}/.htaccess`, '.htaccess')
-		await hta_addSql(`${temp_dir}/.htaccess`)
-		await client.uploadFrom(`${temp_dir}/.htaccess`, '.htaccess')
+		await client.downloadTo(`${temp_dir}/.htaccess`, '.htaccess');
+		await hta_addSql(`${temp_dir}/.htaccess`);
+		await client.uploadFrom(`${temp_dir}/.htaccess`, '.htaccess');
 
 		// Put the PHP dump script on the server
-		await createDumpScript(`${temp_dir}/db-dump.php`, service)
-		await client.uploadFrom(`${temp_dir}/db-dump.php`, 'db-dump.php')
-		spin.succeed()
+		await createDumpScript(`${temp_dir}/db-dump.php`, service);
+		await client.uploadFrom(`${temp_dir}/db-dump.php`, 'db-dump.php');
+		spin.succeed();
 
-		spin = ora('Waiting for the database dump to exist on the server').start()
+		spin = ora(
+			'Waiting for the database dump to exist on the server',
+		).start();
 		// Create database dump
-		await $`curl ${service.host}/db-dump.php`
+		await $`curl ${service.host}/db-dump.php`;
 		// Wait until db.sql exists on server
-		let dump_created = false
+		let dump_created = false;
 		while (!dump_created) {
-			let ftp_files = await client.list()
+			let ftp_files = await client.list();
 			for (let f = 0; f < ftp_files.length; f++) {
-				if (ftp_files[f].name == "db.sql") {
-					dump_created = true
+				if (ftp_files[f].name == 'db.sql') {
+					dump_created = true;
 					break;
 				}
 			}
-			await sleep(15000)
+			await sleep(15000);
 		}
-		spin.succeed()
+		spin.succeed();
 
 		// Remove db-dump.php script from server
-		await client.remove('db-dump.php')
+		await client.remove('db-dump.php');
 
 		// Download DUMP
-		spin = ora('Downloading the database dump').start()
-		await client.downloadTo(`${temp_dir}/db.sql`, 'db.sql')
-		spin.succeed()
+		spin = ora('Downloading the database dump').start();
+		await client.downloadTo(`${temp_dir}/db.sql`, 'db.sql');
+		spin.succeed();
 
-		spin = ora('Removing scripts and dump from server').start()
+		spin = ora('Removing scripts and dump from server').start();
 		// Remove db.sql from server
-		await client.remove('db.sql')
+		await client.remove('db.sql');
 
 		// Put back the original .htaccess file
-		await hta_removeSql(`${temp_dir}/.htaccess`)
-		await client.uploadFrom(`${temp_dir}/.htaccess`, '.htaccess')
-		spin.succeed()
+		await hta_removeSql(`${temp_dir}/.htaccess`);
+		await client.uploadFrom(`${temp_dir}/.htaccess`, '.htaccess');
+		spin.succeed();
 
 		// Remove working files
-		await $`rm ${temp_dir}/.htaccess ${temp_dir}/db-dump.php`
+		await $`rm ${temp_dir}/.htaccess ${temp_dir}/db-dump.php`;
 
 		// Download WWW dir (with db.sql inside)
-		spin = ora('Downloading www directory').start()
-		await client.downloadToDir(`${temp_dir}`)
-		spin.succeed()
+		spin = ora('Downloading www directory').start();
+		await client.downloadToDir(`${temp_dir}`);
+		spin.succeed();
 
-		/// ARCHIVE
-		cd(path.join(temp_dir, '..'))
+		// ARCHIVE
+		cd(path.join(temp_dir, '..'));
 
-		// Create archive
-		let archive_name = `${backup_dir}.tar.bz2`
-		spin = ora('Creating an archive').start()
-		await $`mkdir -p ${path.join(backup_dir, '..')}`
-		await $`tar -cjf ${archive_name} ${start_date}`
-
-		cd(path.join(__dirname, '..'))
+		// Add to duplicity backup
+		spin = ora('Adding to duplicity backup').start();
+		await duplicity({
+			include: [],
+			exclude: [],
+			source_dir: temp_dir,
+			backup_dir,
+			systemConfig,
+		});
 
 		// Delete downloaded
-		await $`rm -rf ${path.join(temp_dir, '..')}`
-
-		// Encrypt archive
-		archive_name = await encrypt(systemConfig, archive_name)
+		await $`rm -rf ${path.join(temp_dir, '..')}`;
 
 		// Get archive size
-		let archive_size = await $`du -h ${archive_name}| cut -f 1 | tr '\n' ' ' | sed '$s/ $//'`
-		spin.succeed()
+		let archive_size =
+			await $`du -h ${backup_dir}| cut -f 1 | tr '\n' ' ' | sed '$s/ $//'`;
+		spin.succeed();
 
-		spin = ora('Applying retention rules').start()
-		await applyRetentionRules(path.join(backup_dir, '..'))
-		spin.succeed()
+		spin = ora('Applying retention rules').start();
+		await applyRetentionRules(path.join(backup_dir, '..'));
+		spin.succeed();
 
-		console.log(chalk.green("done"))
-		client.close()
-		return `✅  ${service.name} (${archive_size})`
-	}
-	catch(err) {
+		console.log(chalk.green('done'));
+		client.close();
+		return `✅  ${service.name} (${archive_size})`;
+	} catch (err) {
 		try {
-			client.close()
+			client.close();
 		} catch (e) {}
-		if (spin)
-			spin.fail()
-		return `❌  ${service.name} (${err.toString().replace(/\n/g, '')})`
+		if (spin) spin.fail();
+		return `❌  ${service.name} (${err.toString().replace(/\n/g, '')})`;
 	}
 }

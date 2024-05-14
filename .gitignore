@@ -4,5 +4,7 @@ store/
 backups
 tmp
 config.yml
+config.*.yml
 **/*.tar.bz2
 .env
+*.gpg
