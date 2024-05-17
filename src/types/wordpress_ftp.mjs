@@ -5,7 +5,6 @@ import ftp from 'basic-ftp';
 import { DateTime } from 'luxon';
 import ora from 'ora';
 
-import { applyRetentionRules } from '../retention.mjs';
 import { duplicity } from '../duplicity.mjs';
 
 $.verbose = false;
@@ -39,9 +38,9 @@ async function createDumpScript(script_path, service) {
 	await fs.writeFile(
 		script_path,
 		`<?
-	system("mysqldump --host=${service.database.host} --user=${service.database.user} --password=${service.database.password} ${service.database.name} > db.sql");
-	echo "started";
-	?>`,
+system("mysqldump --host=${service.database.host} --user=${service.database.user} --password=${service.database.password} ${service.database.name} > db.sql");
+echo "started";
+?>`,
 	);
 }
 
@@ -59,11 +58,7 @@ export async function runWordpressFtp(systemConfig, service) {
 		service.backup_dir,
 		start_date,
 	);
-	const backup_dir = path.join(
-		systemConfig.backup_dir,
-		service.backup_dir,
-		start_date,
-	);
+	const backup_dir = path.join(systemConfig.backup_dir, service.backup_dir);
 
 	try {
 		// Connect to FTP
@@ -93,6 +88,7 @@ export async function runWordpressFtp(systemConfig, service) {
 			'Waiting for the database dump to exist on the server',
 		).start();
 		// Create database dump
+		await $`sleep 5`;
 		await $`curl ${service.host}/db-dump.php`;
 		// Wait until db.sql exists on server
 		let dump_created = false;
@@ -134,7 +130,7 @@ export async function runWordpressFtp(systemConfig, service) {
 		spin.succeed();
 
 		// ARCHIVE
-		cd(path.join(temp_dir, '..'));
+		// cd(path.join(temp_dir, '..'));
 
 		// Add to duplicity backup
 		spin = ora('Adding to duplicity backup').start();
@@ -144,6 +140,7 @@ export async function runWordpressFtp(systemConfig, service) {
 			source_dir: temp_dir,
 			backup_dir,
 			systemConfig,
+			allowSourceMismatch: true,
 		});
 
 		// Delete downloaded
@@ -154,9 +151,9 @@ export async function runWordpressFtp(systemConfig, service) {
 			await $`du -h ${backup_dir}| cut -f 1 | tr '\n' ' ' | sed '$s/ $//'`;
 		spin.succeed();
 
-		spin = ora('Applying retention rules').start();
-		await applyRetentionRules(path.join(backup_dir, '..'));
-		spin.succeed();
+		// spin = ora('Applying retention rules').start();
+		// await applyRetentionRules(path.join(backup_dir, '..'));
+		// spin.succeed();
 
 		console.log(chalk.green('done'));
 		client.close();

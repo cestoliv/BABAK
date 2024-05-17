@@ -15,6 +15,7 @@ dotenv.config();
 
 const args = process.argv.slice(4);
 const configFilePath = args[0] || 'config.yml';
+const serviceToRun = args[1] || undefined;
 console.log(`Using configuration file: ${configFilePath}`);
 const configFile = fs.readFileSync(configFilePath, 'utf8');
 const config = YAML.parse(configFile);
@@ -32,7 +33,10 @@ let message = '';
 for (let s = 0; s < config.services.length; s++) {
 	const service = config.services[s];
 
-	if (service.hasOwnProperty('enabled') && !service.enabled) {
+	if (
+		(service.hasOwnProperty('enabled') && !service.enabled) ||
+		(serviceToRun != undefined && service.name != serviceToRun)
+	) {
 		console.log(chalk.yellow(`${service.name} is disabled.\n`));
 		continue;
 	}
@@ -51,9 +55,11 @@ for (let s = 0; s < config.services.length; s++) {
 		);
 }
 
-message = `🕐 ${DateTime.now().toFormat('ccc dd LLLL yyyy')}\n⌛ Time taken: ${
-	DateTime.now().diff(startTime, 'minutes').minutes.toFixed(2)
-} minutes\n\n${message}\n\n😉, Hypolite`;
+message = `🕐 ${DateTime.now().toFormat(
+	'ccc dd LLLL yyyy',
+)}\n⌛ Time taken: ${DateTime.now()
+	.diff(startTime, 'minutes')
+	.minutes.toFixed(2)} minutes\n\n${message}\n\n😉, Hypolite`;
 
 console.log(`\n${chalk.green('message:')}\n${message}`);
 

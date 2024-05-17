@@ -4,6 +4,7 @@
 - npm
 - gnupg
 - sshfs
+- curlftpfs
 
 # GPG
 
