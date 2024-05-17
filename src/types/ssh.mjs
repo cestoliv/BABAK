@@ -76,7 +76,7 @@ export async function runSSH(systemConfig, service) {
 		return `✅  ${service.name} (${archive_size})`;
 	} catch (err) {
 		// Unmount the host
-		await $`umount ${mount_dir}; rm -rdf ${mount_dir}`;
+		await $`umount ${mount_dir}; echo "Unmounted"`;
 		if (spin) spin.fail();
 		return `❌  ${service.name} (${err.toString().replace(/\n/g, '')})`;
 	}
