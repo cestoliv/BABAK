@@ -1,0 +1,90 @@
+# System configuration (optional)
+system:
+  backup_dir: ./backups # Where to store backups
+  temp_dir: /tmp/babak # Temporary directory for operations
+  gpg_key: "xxxxx" # GPG key ID for encryption (optional)
+
+  # Retention policy (optional) - "Lazy Man's Backup Strategy"
+  # retention:
+  #   full_backup_lifetime: "6M"    # Keep full backups for 6 months (default)
+  #   incremental_lifetime: "1M"    # Keep incremental backups for 1 month (default)
+  #   keep_full_chains: 1           # Number of full backup chains to preserve (default)
+
+  # Notifications (optional)
+  # ntfy:
+  #   url: https://ntfy.sh
+  #   topic: babak-backups
+  #   username: optional_username  # Optional
+  #   password: optional_password  # Optional
+
+  # Duplicity options (optional)
+  # duplicity:
+  #   allow_source_mismatch: true  # Allow hostname changes between runs (default: true, useful for Docker)
+  #   full_if_older_than: "1M"     # Create a new full backup if the last one is older than this (default: 1M)
+
+  # Cloud sync with rclone (optional)
+  # rclone:
+  #   enabled: true
+  #   remote: "s3:my-bucket/babak-backups"  # Remote from rclone.conf
+  #   sync_command: "sync"  # "sync" (mirror), "copy" (one-way), or "move"
+  #   flags:
+  #     - "--progress"
+  #     - "--transfers=4"
+  #     - "--verbose"
+  #   exclude:
+  #     - "*.tmp"
+  #     - ".DS_Store"
+  #   dry_run: false  # Set to true to test without uploading
+
+services:
+  ############
+  # SSH Backup Example
+  ############
+  # - name: SSH Backup
+  #   type: ssh
+  #   enabled: true
+  #   host:
+  #     name: my-host # SSH host from ~/.ssh/config
+  #     path: /home/user/data # Remote path to backup
+  #   pre_command: "echo 'Starting SSH backup'" # Optional command to run before backup
+  #   storage:
+  #     - ./data # Local paths to backup (can be files or directories)
+  #   exclude:
+  #     - ./node_modules
+  #     - "*.log"
+  #   post_command: "echo 'SSH backup complete'" # Optional command to run after backup
+
+  ############
+  # Local Backup Example
+  ############
+  # - name: Local Documents
+  #   type: local
+  #   enabled: true
+  #   paths:
+  #     - /home/user/documents
+  #     - /home/user/projects
+  #   exclude:
+  #     - "**/node_modules"
+  #     - "**/.git"
+  #     - "**/*.log"
+  #   pre_command: "echo 'Starting local backup'"
+  #   post_command: "echo 'Local backup complete'"
+
+  ############
+  # WordPress FTP Backup Example
+  ############
+  # - name: WordPress Site
+  #   type: wordpress_ftp
+  #   enabled: true
+  #   host_url: https://example.com
+  #   ftp:
+  #     host: ftp.example.com
+  #     user: wordpress_user
+  #     password: ${FTP_PASSWORD}  # Or use environment variable
+  #     dir: /public_html
+  #     secure: false  # Set to true for FTPS
+  #   database:
+  #     host: localhost
+  #     user: wp_user
+  #     password: ${DB_PASSWORD}  # Or use environment variable
+  #     name: wordpress_db

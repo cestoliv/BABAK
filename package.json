@@ -1,22 +1,26 @@
 {
-	"name": "babak",
-	"version": "1.0.0",
-	"description": "",
-	"type": "module",
-	"main": "src/start.mjs",
-	"scripts": {
-		"start": "zx --experimental src/start.mjs"
-	},
-	"author": "cestoliv",
-	"license": "MIT",
-	"dependencies": {
-		"basic-ftp": "^5.0.3",
-		"dotenv": "^16.3.1",
-		"luxon": "^3.3.0",
-		"matrix-js-sdk": "^26.0.1",
-		"node-localstorage": "^2.2.1",
-		"olm": "https://packages.matrix.org/npm/olm/olm-3.2.1.tgz",
-		"ora": "^6.3.1",
-		"zx": "^7.2.2"
-	}
+    "name": "babak",
+    "module": "index.ts",
+    "type": "module",
+    "private": true,
+    "scripts": {
+        "test": "bun test",
+        "test:coverage": "bun test --coverage",
+        "check:format": "bun biome check .",
+        "check:type": "bun tsc"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.2.4",
+        "@types/bun": "latest",
+        "@types/luxon": "^3.7.1"
+    },
+    "peerDependencies": {
+        "typescript": "^5"
+    },
+    "dependencies": {
+        "basic-ftp": "^5.0.5",
+        "luxon": "^3.7.2",
+        "yaml": "^2.8.1",
+        "zod": "^4.1.11"
+    }
 }

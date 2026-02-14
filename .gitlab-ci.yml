@@ -1,21 +1,24 @@
 stages:
-- test
-- docker-publish
+  - check
+  - build
 
-sast:
-  stage: test
-  retry: 2
-include:
-- template: Security/SAST.gitlab-ci.yml
-- template: Security/Dependency-Scanning.gitlab-ci.yml
-- template: Security/Secret-Detection.gitlab-ci.yml
+check:
+  image: oven/bun:latest
+  stage: check
+  rules:
+    - if: $CI_COMMIT_BRANCH
+  script:
+    - bun install --frozen-lockfile
+    - bunx biome check .
+    - bunx tsc --noEmit
+    - bun test --coverage
 
-docker-publish:
+.docker-build:
   image: docker:latest
-  stage: docker-publish
+  stage: build
+  rules:
+    - if: $CI_COMMIT_BRANCH
   retry: 2
-  only:
-    - main
   before_script:
     - docker info
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
@@ -28,5 +31,25 @@ docker-publish:
         tag=":$CI_COMMIT_REF_SLUG"
         echo "Running on branch '$CI_COMMIT_BRANCH': tag = $tag"
       fi
-    - docker build --pull -t "$CI_REGISTRY/$CI_PROJECT_PATH${tag}" .
-    - docker push "$CI_REGISTRY/$CI_PROJECT_PATH${tag}"
+    - |
+      if [[ -n "${dir}" ]]; then
+        echo "Changing directory to '${dir}'"
+        cd "$dir"
+      fi
+    - |
+      if [[ -n "${image_name}" ]]; then
+        IMAGE_NAME=""$CI_REGISTRY/$CI_PROJECT_PATH/${image_name}${tag}""
+      else
+        IMAGE_NAME="$CI_REGISTRY/$CI_PROJECT_PATH${tag}"
+      fi
+    - docker build --pull -t "$IMAGE_NAME" .
+    - docker push "$IMAGE_NAME"
+
+build-babak:
+  extends: .docker-build
+
+build-rclone-sync:
+  extends: .docker-build
+  variables:
+    image_name: rclone-sync
+    dir: ./rclone

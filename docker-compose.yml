@@ -1,10 +1,44 @@
-version: "3.9"
 services:
   babak:
-    image: babak
     build: .
+    container_name: babak
+    privileged: true  # Required for SSHFS
+    devices:
+      - /dev/fuse  # Required for SSHFS
     volumes:
-      - ./backups:/babak/backups
-      - ./config.yml:/babak/config.yml
-      - ./conf/kubeconf.yml:/root/.kube/config
-      - ./conf/ssh:/root/.ssh
+      # Config
+      - ./config.yml:/workspace/config.yml:ro
+
+      # SSH keys for remote access
+      - ./ssh:/root/.ssh:ro
+
+      # GPG keys for encrypted backups
+      # gpg --export --armor <KEY_ID> > gpg-pubkey.asc
+      # gpg --export-secret-keys --armor <KEY_ID> > gpg-secret.asc
+      - ./gpg-pubkey.asc:/run/secrets/gpg-pubkey.asc:ro
+      - ./gpg-secret.asc:/run/secrets/gpg-secret.asc:ro
+
+      # Backup storage
+      - ./backups:/backups
+
+      # Temp directory
+      - /tmp/babak:/tmp/babak
+    environment:
+      - CONFIG_FILE=/workspace/config.yml
+      - DEBUG=${DEBUG:-false}
+      - PASSPHRASE=""
+    restart: unless-stopped
+
+  rclone-sync:
+    build:
+      context: ./rclone
+      dockerfile: Dockerfile
+    container_name: babak-rclone-sync
+    volumes:
+      - ./backups:/workspace/backups:ro
+      - ./rclone:/workspace/rclone
+      - ./config.yml:/workspace/config.yml:ro
+    environment:
+      - CONFIG_FILE=/workspace/config.yml
+      - BACKUPS_DIR=/workspace/backups
+      - RCLONE_CONFIG=/workspace/rclone/rclone.conf

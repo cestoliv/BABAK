@@ -1,25 +1,31 @@
-FROM alpine:edge
+FROM oven/bun:1-alpine
 
-WORKDIR /babak
+WORKDIR /workspace
+
+# Install system dependencies
+RUN apk add --no-cache \
+    openssh-client \
+    sshfs \
+    duplicity \
+    gnupg \
+    rsync \
+    curl \
+    fuse
+
+# Copy package files
+COPY package.json bun.lock ./
 
 # Install dependencies
-RUN apk add --no-cache bash nodejs npm rsync openssh curl
-RUN apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/testing/ \
-	kubectl
+RUN bun install --production
 
-# Create scripts
-RUN echo $'#!/bin/sh \n\
-if [ -d "/root/.ssh" ]; then \n\
-	chown -R $(id -u):$(id -g) /root/.ssh; chmod -R 700 /root/.ssh; chmod 600 /root/.ssh/id_rsa; chmod 644 /root/.ssh/id_rsa.pub; chmod 600 /root/.ssh/config; \n\
-	echo "SSH config files are ready"; \n\
-fi \
-' > /babak/set_perms.sh
+# Copy source code
+COPY src ./src
+COPY index.ts ./
+COPY tsconfig.json ./
 
-# Copy babak sources
-COPY package.json package.json
-COPY package-lock.json package-lock.json
-COPY src src
-# Install npm dependencies and build
-RUN npm i
+# Create directories
+RUN mkdir -p /backups /tmp/babak
 
-CMD sh -c "sh /babak/set_perms.sh; npm start"
+# Entrypoint handles SSH + GPG setup, then runs babak
+COPY entrypoint.sh ./
+ENTRYPOINT ["/workspace/entrypoint.sh"]
