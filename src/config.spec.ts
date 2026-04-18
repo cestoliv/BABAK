@@ -7,7 +7,8 @@ import {
     spyOn,
     test,
 } from 'bun:test';
-import { parseConfig } from './config.ts';
+import type { Service } from './config.ts';
+import { filterServices, parseConfig } from './config.ts';
 
 describe('parseConfig', () => {
     let mockProcessExit: ReturnType<typeof spyOn>;
@@ -39,6 +40,8 @@ services:
     host:
       name: server1
       path: /data
+    storage:
+      - ./data
 `);
             const config = await parseConfig('/test/config.yml');
             expect(config.services).toHaveLength(1);
@@ -145,6 +148,8 @@ services:
     host:
       name: server
       path: /data
+    storage:
+      - ./files
 `);
             const config = await parseConfig('/test/config.yml');
             expect(config.services).toHaveLength(2);
@@ -168,6 +173,20 @@ system:
 services:
   - type: invalid_type
     name: test
+`);
+            await expect(parseConfig('/test/config.yml')).rejects.toThrow(
+                'process.exit called',
+            );
+        });
+
+        test('exits when SSH service is missing storage', async () => {
+            mockBunFile(`
+services:
+  - type: ssh
+    name: test
+    host:
+      name: server
+      path: /data
 `);
             await expect(parseConfig('/test/config.yml')).rejects.toThrow(
                 'process.exit called',
@@ -237,5 +256,85 @@ services:
             await parseConfig();
             expect(fileSpy).toHaveBeenCalledWith(`${process.cwd()}/config.yml`);
         });
+    });
+});
+
+describe('filterServices', () => {
+    const makeService = (name: string, enabled = true): Service => ({
+        type: 'local',
+        name,
+        enabled,
+        paths: ['/tmp'],
+    });
+
+    let mockProcessExit: ReturnType<typeof spyOn>;
+
+    beforeEach(() => {
+        mockProcessExit = spyOn(process, 'exit').mockImplementation((() => {
+            throw new Error('process.exit called');
+        }) as never);
+    });
+
+    afterEach(() => {
+        mock.restore();
+    });
+
+    test('returns only enabled services when no filter', () => {
+        const services = [
+            makeService('a', true),
+            makeService('b', false),
+            makeService('c', true),
+        ];
+        const result = filterServices(services, []);
+        expect(result.map((s) => s.name)).toEqual(['a', 'c']);
+    });
+
+    test('returns empty array when all disabled and no filter', () => {
+        const services = [makeService('a', false), makeService('b', false)];
+        const result = filterServices(services, []);
+        expect(result).toEqual([]);
+    });
+
+    test('returns matching service even if disabled', () => {
+        const services = [makeService('a', false), makeService('b', true)];
+        const result = filterServices(services, ['a']);
+        expect(result).toHaveLength(1);
+        expect(result[0]?.name).toBe('a');
+    });
+
+    test('returns multiple matching services in config order', () => {
+        const services = [
+            makeService('a', true),
+            makeService('b', false),
+            makeService('c', true),
+        ];
+        const result = filterServices(services, ['c', 'a']);
+        expect(result.map((s) => s.name)).toEqual(['a', 'c']);
+    });
+
+    test('exits on unknown service name', () => {
+        const services = [makeService('a')];
+        expect(() => filterServices(services, ['nonexistent'])).toThrow(
+            'process.exit called',
+        );
+        expect(mockProcessExit).toHaveBeenCalledWith(1);
+    });
+
+    test('exits when mix of known and unknown names', () => {
+        const services = [makeService('a'), makeService('b')];
+        expect(() => filterServices(services, ['a', 'unknown'])).toThrow(
+            'process.exit called',
+        );
+        expect(mockProcessExit).toHaveBeenCalledWith(1);
+    });
+
+    test('returns empty array for empty services with no filter', () => {
+        const result = filterServices([], []);
+        expect(result).toEqual([]);
+    });
+
+    test('exits for empty services with a filter', () => {
+        expect(() => filterServices([], ['a'])).toThrow('process.exit called');
+        expect(mockProcessExit).toHaveBeenCalledWith(1);
     });
 });

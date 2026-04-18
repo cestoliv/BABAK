@@ -1,0 +1,58 @@
+# Production deployment
+#
+# Setup:
+#   mkdir -p storage/{backups,ssh,rclone,tmp,duplicity-cache}
+#   cp config.yml storage/config.yml
+#   gpg --export --armor <KEY_ID> > storage/gpg-pubkey.asc
+#   gpg --export-secret-keys --armor <KEY_ID> > storage/gpg-secret.asc
+#   cp ~/.ssh/id_ed25519 storage/ssh/            # SSH private key for remote backups
+#   cp ~/.ssh/config storage/ssh/config          # SSH config with host aliases
+#   rclone config                                # then cp rclone.conf storage/rclone/
+
+services:
+  babak:
+    image: registry.chevro.fr/cestoliv/babak:v2
+    container_name: babak
+    volumes:
+      - ./storage/config.yml:/workspace/config.yml:ro
+      - ./storage/config-overload.yml:/workspace/config-overload.yml:ro
+      - ./storage/ssh:/root/.ssh:ro
+      - ./storage/gpg-pubkey.asc:/run/secrets/gpg-pubkey.asc:ro
+      - ./storage/gpg-secret.asc:/run/secrets/gpg-secret.asc:ro
+      - ./storage/backups:/backups
+      - ./storage/tmp:/tmp/babak
+
+      # Duplicity cache (avoids re-decrypting metadata across runs)
+      - ./storage/duplicity-cache:/root/.cache/duplicity
+    environment:
+      - CONFIG_FILE=/workspace/config.yml
+      - PASSPHRASE=${PASSPHRASE:-}
+      - DEBUG=${DEBUG:-false}
+
+  rclone-sync:
+    image: registry.chevro.fr/cestoliv/babak/rclone-sync:v2
+    container_name: babak-rclone-sync
+    volumes:
+      - ./storage/config.yml:/workspace/config.yml:ro
+      - ./storage/config-overload.yml:/workspace/config-overload.yml:ro
+      - ./storage/rclone:/workspace/rclone
+      - ./storage/backups:/workspace/backups:ro
+    environment:
+      - CONFIG_FILE=/workspace/config.yml
+      - BACKUPS_DIR=/workspace/backups
+      - RCLONE_CONFIG=/workspace/rclone/rclone.conf
+
+
+# # --- SSH setup ---
+# if [ -d "/root/.ssh" ]; then
+#   chmod 700 /root/.ssh
+#   [ -f /root/.ssh/id_rsa ] && chmod 600 /root/.ssh/id_rsa
+#   [ -f /root/.ssh/id_ed25519 ] && chmod 600 /root/.ssh/id_ed25519
+#   [ -f /root/.ssh/id_rsa.pub ] && chmod 644 /root/.ssh/id_rsa.pub
+#   [ -f /root/.ssh/id_ed25519.pub ] && chmod 644 /root/.ssh/id_ed25519.pub
+#   [ -f /root/.ssh/config ] && chmod 600 /root/.ssh/config
+#   echo "SSH config ready"
+# fi
+
+
+# docker compose run --rm -e CONFIG_FILE=/workspace/config-overload.yml babak

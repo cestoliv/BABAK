@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util';
 import { DateTime } from 'luxon';
 import { parse } from 'yaml';
-import { parseConfig } from './src/config.ts';
+import { filterServices, parseConfig } from './src/config.ts';
 import { isEncryptionEnabled } from './src/encryption.ts';
 import { info, error as logError, warn } from './src/log.ts';
 import {
@@ -15,12 +15,13 @@ import { runLocalBackup } from './src/types/local.ts';
 import { runSSHBackup } from './src/types/ssh.ts';
 import { runWordPressFTPBackup } from './src/types/wordpress-ftp.ts';
 
-const { values: args } = parseArgs({
+const { values: args, positionals: serviceFilter } = parseArgs({
     args: Bun.argv.slice(2),
     options: {
         config: { type: 'string', short: 'c' },
     },
     strict: false,
+    allowPositionals: true,
 });
 
 const configPath = typeof args.config === 'string' ? args.config : undefined;
@@ -28,9 +29,15 @@ const configPath = typeof args.config === 'string' ? args.config : undefined;
 const main = async () => {
     const startTime = DateTime.now();
     const config = await parseConfig(configPath);
+    const servicesToRun = filterServices(config.services, serviceFilter);
     const results: BackupResult[] = [];
 
     info('Starting Babak backup system');
+    if (serviceFilter.length > 0) {
+        info(
+            `Running only specified services: ${serviceFilter.map((n) => `"${n}"`).join(', ')}`,
+        );
+    }
 
     // Apply system config defaults
     const systemConfig = {
@@ -48,12 +55,7 @@ const main = async () => {
     }
 
     // Run backups for each service
-    for (const service of config.services) {
-        if (!service.enabled) {
-            info(`[${service.name}] Skipping (disabled)`);
-            continue;
-        }
-
+    for (const service of servicesToRun) {
         try {
             info(`[${service.name}] Starting ${service.type} backup`);
 

@@ -10,9 +10,9 @@ import type { BackupResult } from './base.ts';
 /**
  * Run SSH backup:
  * 1. Execute pre_command on remote server
- * 2. Mount remote directory via SSHFS
- * 3. Run Duplicity backup
- * 4. Unmount
+ * 2. Copy files from remote via rsync
+ * 3. Run Duplicity backup on local copy
+ * 4. Clean up local copy
  * 5. Execute post_command on remote server (always runs if pre_command ran)
  * 6. Apply retention policy
  */
@@ -21,9 +21,9 @@ export const runSSHBackup = async (
     systemConfig: SystemConfig,
 ): Promise<BackupResult> => {
     const startTime = DateTime.now();
-    const mountDir = path.join(
+    const localCopyDir = path.join(
         resolvePath(systemConfig.temp_dir),
-        'mount',
+        'copy',
         service.name,
     );
     const backupDir = resolvePath(
@@ -45,44 +45,59 @@ export const runSSHBackup = async (
             preCommandRan = true;
         }
 
-        // Mount via SSHFS
+        // Copy files from remote via rsync
         info(
-            `[${service.name}] Mounting ${service.host.name}:${service.host.path}`,
+            `[${service.name}] Copying files from ${service.host.name}:${service.host.path}`,
         );
-        await ensureDir(mountDir);
-        await exec([
-            'sshfs',
-            `${service.host.name}:${service.host.path}`,
-            mountDir,
-        ]);
+        await ensureDir(localCopyDir);
 
-        // Run Duplicity
+        const rsyncExcludes: string[] = [];
+        for (const ex of service.exclude || []) {
+            rsyncExcludes.push('--exclude', ex);
+        }
+
+        for (const p of service.storage) {
+            const cleanPath = p.replace(/^\.\//, '');
+            const remoteSrc = `${service.host.name}:${service.host.path}/${cleanPath}`;
+            const localDestParent = path.dirname(
+                path.join(localCopyDir, cleanPath),
+            );
+
+            await ensureDir(localDestParent);
+            await exec([
+                'rsync',
+                '-az',
+                ...rsyncExcludes,
+                remoteSrc,
+                `${localDestParent}/`,
+            ]);
+        }
+
+        // Run Duplicity on local copy
         info(`[${service.name}] Running backup via Duplicity`);
         await ensureDir(backupDir);
         await runDuplicity({
-            sourceDir: mountDir,
+            sourceDir: localCopyDir,
             backupDir,
-            include: service.storage,
-            exclude: service.exclude || [],
             systemConfig,
         });
 
-        // Unmount
-        info(`[${service.name}] Unmounting`);
-        await exec(['umount', mountDir]);
+        // Clean up local copy
+        info(`[${service.name}] Cleaning up local copy`);
+        await Bun.$`rm -rf ${localCopyDir}`.quiet();
 
         backupSuccess = true;
         size = await getDirectorySize(backupDir);
     } catch (err) {
-        // Ensure unmount on error
+        // Clean up local copy on error
         try {
-            await exec(['umount', mountDir]);
-        } catch (unmountErr) {
+            await Bun.$`rm -rf ${localCopyDir}`.quiet();
+        } catch (cleanupErr) {
             warn(
-                `[${service.name}] Failed to unmount ${mountDir}:`,
-                unmountErr instanceof Error
-                    ? unmountErr.message
-                    : String(unmountErr),
+                `[${service.name}] Failed to clean up ${localCopyDir}:`,
+                cleanupErr instanceof Error
+                    ? cleanupErr.message
+                    : String(cleanupErr),
             );
         }
 

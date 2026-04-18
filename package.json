@@ -7,7 +7,9 @@
         "test": "bun test",
         "test:coverage": "bun test --coverage",
         "check:format": "bun biome check .",
-        "check:type": "bun tsc"
+        "check:format:fix": "bun biome check . --write --unsafe",
+        "check:type": "bun tsc",
+        "validate:config": "bun run validate-config.ts"
     },
     "devDependencies": {
         "@biomejs/biome": "2.2.4",

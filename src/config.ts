@@ -51,7 +51,7 @@ const SSHServiceSchema = z.object({
     }),
     pre_command: z.string().optional(),
     post_command: z.string().optional(),
-    storage: z.array(z.string()).optional(),
+    storage: z.array(z.string()).min(1),
     exclude: z.array(z.string()).optional(),
 });
 
@@ -106,6 +106,25 @@ export type SSHService = z.infer<typeof SSHServiceSchema>;
 export type LocalService = z.infer<typeof LocalServiceSchema>;
 export type WordPressFTPService = z.infer<typeof WordPressFTPServiceSchema>;
 export type Service = z.infer<typeof ServiceSchema>;
+
+export const filterServices = (
+    services: Service[],
+    serviceFilter: string[],
+): Service[] => {
+    if (serviceFilter.length === 0) {
+        return services.filter((s) => s.enabled);
+    }
+    const knownNames = new Set(services.map((s) => s.name));
+    const unknown = serviceFilter.filter((name) => !knownNames.has(name));
+    if (unknown.length > 0) {
+        error(`Unknown service(s): ${unknown.map((n) => `"${n}"`).join(', ')}`);
+        error(
+            `Available services: ${[...knownNames].map((n) => `"${n}"`).join(', ')}`,
+        );
+        process.exit(1);
+    }
+    return services.filter((s) => serviceFilter.includes(s.name));
+};
 
 export const parseConfig = async (configPath?: string): Promise<Config> => {
     const filePath = configPath ?? `${process.cwd()}/config.yml`;

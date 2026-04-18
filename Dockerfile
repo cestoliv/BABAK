@@ -5,12 +5,10 @@ WORKDIR /workspace
 # Install system dependencies
 RUN apk add --no-cache \
     openssh-client \
-    sshfs \
     duplicity \
     gnupg \
     rsync \
-    curl \
-    fuse
+    curl
 
 # Copy package files
 COPY package.json bun.lock ./

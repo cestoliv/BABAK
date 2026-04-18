@@ -34,6 +34,7 @@ describe('runSSHBackup', () => {
         name: 'test-ssh',
         enabled: true,
         host: { name: 'myserver', path: '/data' },
+        storage: ['./files'],
     };
 
     const baseConfig: SystemConfig = {
@@ -63,29 +64,53 @@ describe('runSSHBackup', () => {
             expect(result.size).toBe('3G');
         });
 
-        test('mounts via sshfs, runs duplicity, unmounts, applies retention', async () => {
-            await runSSHBackup(baseService, baseConfig);
+        test('copies files via rsync, runs duplicity, applies retention', async () => {
+            const service: SSHService = {
+                ...baseService,
+                storage: ['./data', './config'],
+            };
+            await runSSHBackup(service, baseConfig);
 
-            const calls = execMock.mock.calls.map((c) => (c[0] as string[])[0]);
-            expect(calls).toContain('sshfs');
-            expect(calls).toContain('umount');
+            const execCalls = execMock.mock.calls.map((c) => c[0] as string[]);
+            const rsyncCalls = execCalls.filter((c) => c[0] === 'rsync');
+            expect(rsyncCalls).toHaveLength(2);
+            expect(rsyncCalls[0]).toContain('myserver:/data/data');
+            expect(rsyncCalls[1]).toContain('myserver:/data/config');
             expect(runDuplicityMock).toHaveBeenCalledTimes(1);
             expect(applyRetentionPolicyMock).toHaveBeenCalledTimes(1);
         });
 
-        test('mounts remote path correctly', async () => {
-            await runSSHBackup(baseService, baseConfig);
+        test('passes exclude patterns to rsync', async () => {
+            const service: SSHService = {
+                ...baseService,
+                storage: ['./data'],
+                exclude: ['*.log', '*.tmp'],
+            };
+            await runSSHBackup(service, baseConfig);
 
-            const sshfsCall = execMock.mock.calls.find(
-                (c) => (c[0] as string[])[0] === 'sshfs',
-            );
-            expect(sshfsCall).toBeDefined();
-            expect((sshfsCall?.[0] as string[])[1]).toBe('myserver:/data');
+            const execCalls = execMock.mock.calls.map((c) => c[0] as string[]);
+            const rsyncCall = execCalls.find((c) => c[0] === 'rsync');
+            expect(rsyncCall).toBeDefined();
+            expect(rsyncCall).toContain('--exclude');
+            expect(rsyncCall).toContain('*.log');
+            expect(rsyncCall).toContain('*.tmp');
+        });
+
+        test('strips ./ prefix from storage paths for rsync', async () => {
+            const service: SSHService = {
+                ...baseService,
+                storage: ['./dump.sql'],
+            };
+            await runSSHBackup(service, baseConfig);
+
+            const execCalls = execMock.mock.calls.map((c) => c[0] as string[]);
+            const rsyncCall = execCalls.find((c) => c[0] === 'rsync');
+            expect(rsyncCall).toContain('myserver:/data/dump.sql');
         });
     });
 
     describe('pre_command and post_command', () => {
-        test('runs pre_command via ssh before mount', async () => {
+        test('runs pre_command via ssh before rsync', async () => {
             const service = {
                 ...baseService,
                 pre_command: 'pg_dump > dump.sql',
@@ -141,7 +166,6 @@ describe('runSSHBackup', () => {
             };
 
             const result = await runSSHBackup(service, baseConfig);
-            // Backup itself should succeed despite post_command failure
             expect(result.success).toBe(true);
         });
 
@@ -156,30 +180,36 @@ describe('runSSHBackup', () => {
         });
     });
 
-    describe('failure paths', () => {
-        test('attempts umount on backup error', async () => {
-            runDuplicityMock.mockRejectedValueOnce(new Error('fail'));
+    describe('rsync failure handling', () => {
+        test('fails backup when a single rsync call fails', async () => {
+            const service: SSHService = {
+                ...baseService,
+                storage: ['./dump.sql', './docker-compose.yml'],
+            };
 
-            const result = await runSSHBackup(baseService, baseConfig);
-            expect(result.success).toBe(false);
-
-            const umountCall = execMock.mock.calls.find(
-                (c) => (c[0] as string[])[0] === 'umount',
-            );
-            expect(umountCall).toBeDefined();
-        });
-
-        test('handles umount failure gracefully in error path', async () => {
-            runDuplicityMock.mockRejectedValueOnce(new Error('fail'));
             execMock.mockImplementation(async (cmd: string[]) => {
-                if (cmd[0] === 'umount') {
-                    throw new Error('umount failed');
+                if (
+                    cmd[0] === 'rsync' &&
+                    cmd.some((c) => c.includes('dump.sql'))
+                ) {
+                    throw new Error('rsync: file not found');
                 }
             });
 
+            const result = await runSSHBackup(service, baseConfig);
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('rsync');
+            expect(runDuplicityMock).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('failure paths', () => {
+        test('cleans up local copy on backup error', async () => {
+            runDuplicityMock.mockRejectedValueOnce(new Error('fail'));
+
             const result = await runSSHBackup(baseService, baseConfig);
             expect(result.success).toBe(false);
-            // Should not throw
+            expect(result.error).toBe('fail');
         });
 
         test('does not apply retention when backup fails', async () => {
@@ -199,8 +229,8 @@ describe('runSSHBackup', () => {
         });
     });
 
-    describe('includes and excludes', () => {
-        test('passes storage as include and exclude to runDuplicity', async () => {
+    describe('duplicity call', () => {
+        test('does not pass include or exclude to duplicity (rsync handles filtering)', async () => {
             const service: SSHService = {
                 ...baseService,
                 storage: ['./data', './config'],
@@ -209,11 +239,11 @@ describe('runSSHBackup', () => {
 
             await runSSHBackup(service, baseConfig);
 
-            const call = (runDuplicityMock.mock.calls[0] as unknown[])?.[0];
-            expect(call).toMatchObject({
-                include: ['./data', './config'],
-                exclude: ['*.log'],
-            });
+            const call = (
+                runDuplicityMock.mock.calls[0] as unknown[]
+            )?.[0] as Record<string, unknown>;
+            expect(call.include).toBeUndefined();
+            expect(call.exclude).toBeUndefined();
         });
     });
 });

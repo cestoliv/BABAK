@@ -2,9 +2,6 @@ services:
   babak:
     build: .
     container_name: babak
-    privileged: true  # Required for SSHFS
-    devices:
-      - /dev/fuse  # Required for SSHFS
     volumes:
       # Config
       - ./config.yml:/workspace/config.yml:ro
