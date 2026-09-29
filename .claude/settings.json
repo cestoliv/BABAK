@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__ide__getDiagnostics",
+      "Bash(bun test:*)",
+      "Bash(bun check:format:*)",
+      "Bash(bun check:type:*)",
+      "Bash(bun run validate:config:*)"
+    ]
+  }
+}
