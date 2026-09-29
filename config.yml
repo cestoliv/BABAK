@@ -80,11 +80,11 @@ services:
   #   ftp:
   #     host: ftp.example.com
   #     user: wordpress_user
-  #     password: ${FTP_PASSWORD}  # Or use environment variable
+  #     password: change-me  # Literal: Babak does not expand $VARS in the config
   #     dir: /public_html
   #     secure: false  # Set to true for FTPS
   #   database:
   #     host: localhost
   #     user: wp_user
-  #     password: ${DB_PASSWORD}  # Or use environment variable
+  #     password: change-me  # Literal: Babak does not expand $VARS in the config
   #     name: wordpress_db

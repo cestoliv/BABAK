@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { error } from './log.ts';
+import { debug, error } from './log.ts';
 
 /**
  * Resolve a path to an absolute path
@@ -32,6 +32,7 @@ export const getDirectorySize = async (dirPath: string): Promise<string> => {
  * Execute a command with error handling
  */
 export const exec = async (cmd: string[]): Promise<void> => {
+    debug('exec:', cmd.join(' '));
     const proc = Bun.spawn(cmd, {
         stdout: 'inherit',
         stderr: 'inherit',

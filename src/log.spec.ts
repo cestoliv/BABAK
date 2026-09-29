@@ -79,6 +79,23 @@ describe('log', () => {
             expect(spy).not.toHaveBeenCalled();
         });
 
+        test.each(['true', 'TRUE', 'yes'])('logs when DEBUG=%s', (value) => {
+            process.env.DEBUG = value;
+            const spy = spyOn(console, 'log').mockImplementation(() => {});
+            debug('debug message');
+            expect(spy).toHaveBeenCalled();
+        });
+
+        test.each(['false', '0', 'no'])(
+            'does NOT log when DEBUG=%s',
+            (value) => {
+                process.env.DEBUG = value;
+                const spy = spyOn(console, 'log').mockImplementation(() => {});
+                debug('debug message');
+                expect(spy).not.toHaveBeenCalled();
+            },
+        );
+
         test('does NOT log when DEBUG is empty string', () => {
             process.env.DEBUG = '';
             const spy = spyOn(console, 'log').mockImplementation(() => {});
