@@ -24,7 +24,8 @@ services:
       - CONFIG_FILE=/workspace/config.yml
       - DEBUG=${DEBUG:-false}
       - PASSPHRASE=""
-    restart: unless-stopped
+    # One-shot: runs the backups then exits
+    restart: "no"
 
   rclone-sync:
     build:

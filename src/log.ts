@@ -11,8 +11,12 @@ export const error = (...args: unknown[]): void => {
     console.error(`\x1b[31m[ERROR]\x1b[0m `, ...args);
 };
 
+// DEBUG=1, true or yes turns debug logs on; unset, empty, 0 or false keeps them off
+const isDebugEnabled = (): boolean =>
+    ['1', 'true', 'yes'].includes((process.env.DEBUG ?? '').toLowerCase());
+
 export const debug = (...args: unknown[]): void => {
-    if (process.env.DEBUG) {
+    if (isDebugEnabled()) {
         console.log(`\x1b[34m[DEBUG]\x1b[0m `, ...args);
     }
 };
