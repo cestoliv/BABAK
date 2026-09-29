@@ -60,6 +60,13 @@ The `config.yml` file supports three backup types:
     rm dump.sql
 ```
 
+`pre_command` and `post_command` run with `sh -e` (errexit), on the remote host for SSH and locally for Local backups. The script stops at the first failing line, not only when the last line fails:
+
+- A failing `pre_command` marks the service as failed and skips its backup. Babak sends the per-service failure notification and exits non-zero. The `post_command` still runs for cleanup.
+- A failing `post_command` is logged as an error but does not fail the service.
+
+Errexit ignores failures in the middle of a pipeline (`a | b` only checks `b`) and in `if` or `&&` / `||` conditions. Write `cmd > file` instead of `cmd | tee file` when the failure must count.
+
 ### Local Backup
 
 ```yaml

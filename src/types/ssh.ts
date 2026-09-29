@@ -8,12 +8,21 @@ import { ensureDir, exec, getDirectorySize, resolvePath } from '../utils.ts';
 import type { BackupResult } from './base.ts';
 
 /**
+ * Build the remote command for a pre/post_command. The script runs under
+ * `sh -e` (errexit) so any failing line fails it, whatever the remote login
+ * shell is. It is single-quoted so quotes and `$VARS` reach the remote `sh`
+ * untouched.
+ */
+const remoteScript = (path: string, script: string): string =>
+    `sh -ec '${`cd ${path}\n${script}`.replaceAll("'", "'\\''")}'`;
+
+/**
  * Run SSH backup:
- * 1. Execute pre_command on remote server
+ * 1. Execute pre_command on remote server (with errexit: any failing line fails the service)
  * 2. Copy files from remote via rsync
  * 3. Run Duplicity backup on local copy
  * 4. Clean up local copy
- * 5. Execute post_command on remote server (always runs if pre_command ran)
+ * 5. Execute post_command on remote server (always runs if pre_command ran, even if it failed)
  * 6. Apply retention policy
  */
 export const runSSHBackup = async (
@@ -40,9 +49,13 @@ export const runSSHBackup = async (
         // Pre-command
         if (service.pre_command) {
             info(`[${service.name}] Running pre_command`);
-            const preCmd = `cd ${service.host.path} && ${service.pre_command}`;
-            await exec(['ssh', service.host.name, preCmd]);
+            // Set before running: a failed pre_command still gets its post_command cleanup
             preCommandRan = true;
+            await exec([
+                'ssh',
+                service.host.name,
+                remoteScript(service.host.path, service.pre_command),
+            ]);
         }
 
         // Copy files from remote via rsync
@@ -108,8 +121,11 @@ export const runSSHBackup = async (
         if (preCommandRan && service.post_command) {
             try {
                 info(`[${service.name}] Running post_command`);
-                const postCmd = `cd ${service.host.path} && ${service.post_command}`;
-                await exec(['ssh', service.host.name, postCmd]);
+                await exec([
+                    'ssh',
+                    service.host.name,
+                    remoteScript(service.host.path, service.post_command),
+                ]);
             } catch (err) {
                 const postErr =
                     err instanceof Error ? err.message : String(err);

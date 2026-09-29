@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import type { SSHService, SystemConfig } from '../config.ts';
 
 const execMock =
@@ -177,6 +180,74 @@ describe('runSSHBackup', () => {
                 (c[0] as string[]).join(' ').includes('echo post'),
             );
             expect(postCall).toBeUndefined();
+        });
+    });
+
+    describe('multi-line pre_command (errexit)', () => {
+        // Emulate sshd: the args after the host are joined with spaces and
+        // parsed by the remote login shell, here a real local `sh -c`.
+        const execAsRemote = async (cmd: string[]) => {
+            if (cmd[0] !== 'ssh') return;
+            const proc = Bun.spawn(['sh', '-c', cmd.slice(2).join(' ')]);
+            const exitCode = await proc.exited;
+            if (exitCode !== 0) {
+                throw new Error(`Command failed with exit code ${exitCode}`);
+            }
+        };
+
+        test('fails the service when the first line fails, still runs post_command', async () => {
+            execMock.mockImplementation(execAsRemote);
+            const dir = mkdtempSync(path.join(tmpdir(), 'babak-ssh-'));
+            const service: SSHService = {
+                ...baseService,
+                host: { name: 'myserver', path: dir },
+                pre_command: 'false\ntouch ./after-failure\n',
+                post_command: 'touch ./post-ran\n',
+            };
+
+            const result = await runSSHBackup(service, baseConfig);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('exit code 1');
+            expect(existsSync(path.join(dir, 'after-failure'))).toBe(false);
+            expect(existsSync(path.join(dir, 'post-ran'))).toBe(true);
+            expect(runDuplicityMock).not.toHaveBeenCalled();
+            expect(applyRetentionPolicyMock).not.toHaveBeenCalled();
+        });
+
+        test('keeps quotes and $VARS for the remote shell', async () => {
+            execMock.mockImplementation(execAsRemote);
+            const dir = mkdtempSync(path.join(tmpdir(), 'babak-ssh-'));
+            const service: SSHService = {
+                ...baseService,
+                host: { name: 'myserver', path: dir },
+                pre_command:
+                    'export POSTGRES_USER="it\'s me"\nsh -c \'printf "%s" "$POSTGRES_USER"\' > ./out.txt\n',
+            };
+
+            const result = await runSSHBackup(service, baseConfig);
+
+            expect(result.success).toBe(true);
+            expect(readFileSync(path.join(dir, 'out.txt'), 'utf8')).toBe(
+                "it's me",
+            );
+        });
+
+        test('reports a post_command middle-line failure without failing the service', async () => {
+            execMock.mockImplementation(execAsRemote);
+            const dir = mkdtempSync(path.join(tmpdir(), 'babak-ssh-'));
+            const service: SSHService = {
+                ...baseService,
+                host: { name: 'myserver', path: dir },
+                pre_command: 'true',
+                post_command: 'false\ntrue\n',
+            };
+
+            const result = await runSSHBackup(service, baseConfig);
+
+            expect(result.success).toBe(true);
+            const postCall = execMock.mock.calls.at(-1)?.[0] as string[];
+            await expect(execAsRemote(postCall)).rejects.toThrow('exit code 1');
         });
     });
 

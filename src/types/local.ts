@@ -9,9 +9,9 @@ import type { BackupResult } from './base.ts';
 
 /**
  * Run Local backup:
- * 1. Execute pre_command (if specified)
+ * 1. Execute pre_command (if specified, with errexit: any failing line fails the service)
  * 2. Run Duplicity on local paths
- * 3. Execute post_command (if specified, always runs if pre_command ran)
+ * 3. Execute post_command (if specified, always runs if pre_command ran, even if it failed)
  * 4. Apply retention policy
  */
 export const runLocalBackup = async (
@@ -33,8 +33,11 @@ export const runLocalBackup = async (
         // Pre-command
         if (service.pre_command) {
             info(`[${service.name}] Running pre_command`);
+            // Set before running: a failed pre_command still gets its post_command cleanup
+            preCommandRan = true;
+            // -e (errexit): any failing line fails the script, not only the last one
             const proc = Bun.spawn({
-                cmd: ['sh', '-c', service.pre_command],
+                cmd: ['sh', '-ec', service.pre_command],
                 stdout: 'inherit',
                 stderr: 'inherit',
             });
@@ -44,7 +47,6 @@ export const runLocalBackup = async (
                     `pre_command failed with exit code ${exitCode}`,
                 );
             }
-            preCommandRan = true;
         }
 
         // Run Duplicity directly on local paths
@@ -69,7 +71,7 @@ export const runLocalBackup = async (
             try {
                 info(`[${service.name}] Running post_command`);
                 const proc = Bun.spawn({
-                    cmd: ['sh', '-c', service.post_command],
+                    cmd: ['sh', '-ec', service.post_command],
                     stdout: 'inherit',
                     stderr: 'inherit',
                 });

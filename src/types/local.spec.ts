@@ -7,6 +7,9 @@ import {
     spyOn,
     test,
 } from 'bun:test';
+import { existsSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import type { LocalService, SystemConfig } from '../config.ts';
 
 const runDuplicityMock =
@@ -105,7 +108,7 @@ describe('runLocalBackup', () => {
             expect(result.success).toBe(true);
             expect(spawnSpy).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    cmd: ['sh', '-c', 'echo pre'],
+                    cmd: ['sh', '-ec', 'echo pre'],
                 }),
             );
         });
@@ -120,7 +123,7 @@ describe('runLocalBackup', () => {
             expect(spawnSpy).toHaveBeenCalledTimes(2);
             expect(spawnSpy).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    cmd: ['sh', '-c', 'echo post'],
+                    cmd: ['sh', '-ec', 'echo post'],
                 }),
             );
         });
@@ -157,6 +160,25 @@ describe('runLocalBackup', () => {
             expect(result.success).toBe(false);
             expect(result.error).toContain('pre_command failed');
             expect(runDuplicityMock).not.toHaveBeenCalled();
+        });
+
+        test('fails when the first line of a multi-line pre_command fails, still runs post_command', async () => {
+            spawnSpy.mockRestore(); // run the real shell
+            const dir = mkdtempSync(path.join(tmpdir(), 'babak-local-'));
+            const service = {
+                ...baseService,
+                pre_command: `false\ntouch ${dir}/after-failure\n`,
+                post_command: `touch ${dir}/post-ran\n`,
+            };
+
+            const result = await runLocalBackup(service, baseConfig);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('pre_command failed with exit code 1');
+            expect(existsSync(path.join(dir, 'after-failure'))).toBe(false);
+            expect(existsSync(path.join(dir, 'post-ran'))).toBe(true);
+            expect(runDuplicityMock).not.toHaveBeenCalled();
+            expect(applyRetentionPolicyMock).not.toHaveBeenCalled();
         });
     });
 
