@@ -11,10 +11,11 @@ import type { BackupResult } from './base.ts';
  * Build the remote command for a pre/post_command. The script runs under
  * `sh -e` (errexit) so any failing line fails it, whatever the remote login
  * shell is. It is single-quoted so quotes and `$VARS` reach the remote `sh`
- * untouched.
+ * untouched. `umask 077` keeps files it writes, such as plaintext DB dumps,
+ * private to the SSH user.
  */
 const remoteScript = (path: string, script: string): string =>
-    `sh -ec '${`cd ${path}\n${script}`.replaceAll("'", "'\\''")}'`;
+    `sh -ec '${`umask 077\ncd ${path}\n${script}`.replaceAll("'", "'\\''")}'`;
 
 /**
  * Run SSH backup:
