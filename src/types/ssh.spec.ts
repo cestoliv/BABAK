@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { SSHService, SystemConfig } from '../config.ts';
@@ -230,6 +230,23 @@ describe('runSSHBackup', () => {
             expect(result.success).toBe(true);
             expect(readFileSync(path.join(dir, 'out.txt'), 'utf8')).toBe(
                 "it's me",
+            );
+        });
+
+        test('writes pre_command files readable by the SSH user only', async () => {
+            execMock.mockImplementation(execAsRemote);
+            const dir = mkdtempSync(path.join(tmpdir(), 'babak-ssh-'));
+            const service: SSHService = {
+                ...baseService,
+                host: { name: 'myserver', path: dir },
+                pre_command: 'echo secret > ./dump.sql\n',
+            };
+
+            const result = await runSSHBackup(service, baseConfig);
+
+            expect(result.success).toBe(true);
+            expect(statSync(path.join(dir, 'dump.sql')).mode & 0o777).toBe(
+                0o600,
             );
         });
 
