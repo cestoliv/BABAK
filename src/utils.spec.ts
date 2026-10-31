@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import path from 'node:path';
-import { ensureDir, exec, getDirectorySize, resolvePath } from './utils.ts';
+import {
+    ensureDir,
+    exec,
+    getDirectorySize,
+    getSourceBytes,
+    resolvePath,
+} from './utils.ts';
 
 describe('resolvePath', () => {
     test('returns absolute path unchanged', () => {
@@ -95,5 +101,23 @@ describe('getDirectorySize', () => {
             '/nonexistent/dir/that/does/not/exist',
         );
         expect(result).toBe('unknown');
+    });
+});
+
+describe('getSourceBytes', () => {
+    test('sums the size of several paths in bytes', async () => {
+        const dir = await Bun.$`mktemp -d`.text();
+        const root = dir.trim();
+        await Bun.write(`${root}/a/one`, 'x'.repeat(10_000));
+        await Bun.write(`${root}/b/two`, 'y'.repeat(10_000));
+        const both = await getSourceBytes([`${root}/a`, `${root}/b`]);
+        const one = await getSourceBytes([`${root}/a`]);
+        expect(both).toBeGreaterThanOrEqual(20_000);
+        expect(one).toBeGreaterThanOrEqual(10_000);
+        expect(both).toBeGreaterThan(one ?? 0);
+    });
+
+    test('returns undefined when a path is missing', async () => {
+        expect(await getSourceBytes(['/nonexistent/dir/x'])).toBeUndefined();
     });
 });

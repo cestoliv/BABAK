@@ -28,7 +28,11 @@ mock.module('../retention.ts', () => ({
     applyRetentionPolicy: applyRetentionPolicyMock,
 }));
 
+const getSourceBytesMock =
+    mock<() => Promise<number>>().mockResolvedValue(123456);
+
 mock.module('../utils.ts', () => ({
+    getSourceBytes: getSourceBytesMock,
     ensureDir: ensureDirMock,
     getDirectorySize: getDirectorySizeMock,
     resolvePath: (p: string) => `/resolved${p}`,
@@ -73,6 +77,11 @@ describe('runLocalBackup', () => {
             expect(result.success).toBe(true);
             expect(result.serviceName).toBe('test-local');
             expect(result.size).toBe('2.5G');
+        });
+
+        test('reports the source size in bytes', async () => {
+            const result = await runLocalBackup(baseService, baseConfig);
+            expect(result.sourceBytes).toBe(123456);
         });
 
         test('calls ensureDir, runDuplicity, getDirectorySize, applyRetentionPolicy', async () => {

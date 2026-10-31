@@ -4,7 +4,12 @@ import type { LocalService, SystemConfig } from '../config.ts';
 import { runDuplicity } from '../duplicity.ts';
 import { info, error as logError } from '../log.ts';
 import { applyRetentionPolicy } from '../retention.ts';
-import { ensureDir, getDirectorySize, resolvePath } from '../utils.ts';
+import {
+    ensureDir,
+    getDirectorySize,
+    getSourceBytes,
+    resolvePath,
+} from '../utils.ts';
 import type { BackupResult } from './base.ts';
 
 /**
@@ -28,6 +33,7 @@ export const runLocalBackup = async (
     let backupError: string | undefined;
     let retentionError: string | undefined;
     let size: string | undefined;
+    let sourceBytes: number | undefined;
 
     try {
         // Pre-command
@@ -52,6 +58,7 @@ export const runLocalBackup = async (
         // Run Duplicity directly on local paths
         info(`[${service.name}] Running backup via Duplicity`);
         await ensureDir(backupDir);
+        sourceBytes = await getSourceBytes(service.paths);
         await runDuplicity({
             sourceDir: '/', // Root, but filter with includes
             backupDir,
@@ -106,6 +113,7 @@ export const runLocalBackup = async (
         success: backupSuccess,
         serviceName: service.name,
         size,
+        sourceBytes,
         error: backupError,
         retentionError,
         startTime,

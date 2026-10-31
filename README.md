@@ -69,6 +69,7 @@ Durations use the Duplicity time format: `1D`, `2W`, `1M`, `6M`, `1Y`.
 | `gpg_key` | `$GPG_KEY` | GPG key ID used to encrypt. Without one, Babak warns and backs up unencrypted. |
 | `ntfy.url`, `ntfy.topic` | | ntfy server URL and topic. Both required if `ntfy` is set. |
 | `ntfy.username`, `ntfy.password` | | Basic auth, sent only when both are set. |
+| `metrics.file`, `metrics.job` | | Writes three metrics per service to `file`, for the node_exporter textfile collector: `babak_service_last_success_timestamp_seconds`, `babak_service_last_size_bytes` (data backed up, measured with `du -k` before Duplicity runs) and `babak_service_last_duration_seconds` (last run, failed or not). A failed or skipped service keeps its previous values. |
 | `retention.full_backup_lifetime` | `6M` | Chains older than this are deleted. |
 | `retention.incremental_lifetime` | `1M` | Logged only; it drives no command today. |
 | `retention.keep_full_chains` | `1` | Chains that keep their incrementals. See [Retention](#retention). |

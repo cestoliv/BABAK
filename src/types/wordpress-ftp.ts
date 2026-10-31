@@ -5,7 +5,12 @@ import type { SystemConfig, WordPressFTPService } from '../config.ts';
 import { runDuplicity } from '../duplicity.ts';
 import { info, error as logError, warn } from '../log.ts';
 import { applyRetentionPolicy } from '../retention.ts';
-import { ensureDir, getDirectorySize, resolvePath } from '../utils.ts';
+import {
+    ensureDir,
+    getDirectorySize,
+    getSourceBytes,
+    resolvePath,
+} from '../utils.ts';
 import type { BackupResult } from './base.ts';
 
 const HTA_BLOCK_SQL = `
@@ -164,6 +169,7 @@ echo "started";
         // Run Duplicity on downloaded files
         info(`[${service.name}] Running backup via Duplicity`);
         await ensureDir(backupDir);
+        const sourceBytes = await getSourceBytes([tempDir]);
         await runDuplicity({
             sourceDir: tempDir,
             backupDir,
@@ -192,6 +198,7 @@ echo "started";
             success: true,
             serviceName: service.name,
             size,
+            sourceBytes,
             retentionError,
             startTime,
             endTime: DateTime.now(),
