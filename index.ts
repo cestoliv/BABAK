@@ -4,6 +4,7 @@ import { parse } from 'yaml';
 import { filterServices, parseConfig } from './src/config.ts';
 import { isEncryptionEnabled } from './src/encryption.ts';
 import { info, error as logError, warn } from './src/log.ts';
+import { writeServiceMetrics } from './src/metrics.ts';
 import {
     formatBackupSummary,
     type NtfyConfig,
@@ -47,6 +48,7 @@ const main = async () => {
         ntfy: config.system?.ntfy,
         retention: config.system?.retention,
         duplicity: config.system?.duplicity,
+        metrics: config.system?.metrics,
     };
 
     // Check encryption
@@ -108,6 +110,19 @@ const main = async () => {
                     errorMsg,
                 );
             }
+        }
+    }
+
+    if (systemConfig.metrics) {
+        try {
+            await writeServiceMetrics(
+                systemConfig.metrics.file,
+                systemConfig.metrics.job,
+                results,
+                config.services.map((s) => s.name),
+            );
+        } catch (err) {
+            logError('Failed to write service metrics:', err);
         }
     }
 

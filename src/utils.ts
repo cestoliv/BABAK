@@ -29,6 +29,22 @@ export const getDirectorySize = async (dirPath: string): Promise<string> => {
 };
 
 /**
+ * Total size in bytes of the given paths, or undefined if any is missing.
+ * `du -k` works with both GNU and busybox du (busybox has no `-b`).
+ */
+export const getSourceBytes = async (
+    paths: string[],
+): Promise<number | undefined> => {
+    try {
+        const out = await Bun.$`du -skc ${paths}`.quiet().text();
+        const total = Number(out.trim().split('\n').at(-1)?.split('\t')[0]);
+        return Number.isFinite(total) ? total * 1024 : undefined;
+    } catch {
+        return undefined;
+    }
+};
+
+/**
  * Execute a command with error handling
  */
 export const exec = async (cmd: string[]): Promise<void> => {

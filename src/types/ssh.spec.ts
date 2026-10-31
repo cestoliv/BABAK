@@ -14,7 +14,11 @@ const ensureDirMock = mock<() => Promise<void>>().mockResolvedValue(undefined);
 const getDirectorySizeMock =
     mock<() => Promise<string>>().mockResolvedValue('3G');
 
+const getSourceBytesMock =
+    mock<() => Promise<number>>().mockResolvedValue(123456);
+
 mock.module('../utils.ts', () => ({
+    getSourceBytes: getSourceBytesMock,
     exec: execMock,
     ensureDir: ensureDirMock,
     getDirectorySize: getDirectorySizeMock,
@@ -65,6 +69,11 @@ describe('runSSHBackup', () => {
             const result = await runSSHBackup(baseService, baseConfig);
             expect(result.success).toBe(true);
             expect(result.size).toBe('3G');
+        });
+
+        test('reports the source size in bytes', async () => {
+            const result = await runSSHBackup(baseService, baseConfig);
+            expect(result.sourceBytes).toBe(123456);
         });
 
         test('copies files via rsync, runs duplicity, applies retention', async () => {

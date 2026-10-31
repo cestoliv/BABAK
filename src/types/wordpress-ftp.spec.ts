@@ -54,7 +54,11 @@ mock.module('../retention.ts', () => ({
     applyRetentionPolicy: applyRetentionPolicyMock,
 }));
 
+const getSourceBytesMock =
+    mock<() => Promise<number>>().mockResolvedValue(123456);
+
 mock.module('../utils.ts', () => ({
+    getSourceBytes: getSourceBytesMock,
     ensureDir: ensureDirMock,
     getDirectorySize: getDirectorySizeMock,
     resolvePath: (p: string) => p,
@@ -144,6 +148,11 @@ describe('runWordPressFTPBackup', () => {
             expect(result.success).toBe(true);
             expect(result.serviceName).toBe('wp-test');
             expect(result.size).toBe('500M');
+        });
+
+        test('reports the source size in bytes', async () => {
+            const result = await runWordPressFTPBackup(service, config);
+            expect(result.sourceBytes).toBe(123456);
         });
 
         test('connects to FTP with correct credentials', async () => {

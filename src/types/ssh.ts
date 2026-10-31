@@ -4,7 +4,13 @@ import type { SSHService, SystemConfig } from '../config.ts';
 import { runDuplicity } from '../duplicity.ts';
 import { info, error as logError, warn } from '../log.ts';
 import { applyRetentionPolicy } from '../retention.ts';
-import { ensureDir, exec, getDirectorySize, resolvePath } from '../utils.ts';
+import {
+    ensureDir,
+    exec,
+    getDirectorySize,
+    getSourceBytes,
+    resolvePath,
+} from '../utils.ts';
 import type { BackupResult } from './base.ts';
 
 /**
@@ -45,6 +51,7 @@ export const runSSHBackup = async (
     let backupError: string | undefined;
     let retentionError: string | undefined;
     let size: string | undefined;
+    let sourceBytes: number | undefined;
 
     try {
         // Pre-command
@@ -90,6 +97,7 @@ export const runSSHBackup = async (
         // Run Duplicity on local copy
         info(`[${service.name}] Running backup via Duplicity`);
         await ensureDir(backupDir);
+        sourceBytes = await getSourceBytes([localCopyDir]);
         await runDuplicity({
             sourceDir: localCopyDir,
             backupDir,
@@ -152,6 +160,7 @@ export const runSSHBackup = async (
         success: backupSuccess,
         serviceName: service.name,
         size,
+        sourceBytes,
         error: backupError,
         retentionError,
         startTime,

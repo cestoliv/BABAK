@@ -32,6 +32,25 @@ describe('parseConfig', () => {
     };
 
     describe('valid configurations', () => {
+        test('parses the metrics block', async () => {
+            mockBunFile(`
+system:
+  metrics:
+    file: /textfile/babak-chevro.prom
+    job: chevro
+services:
+  - type: local
+    name: local-backup
+    paths:
+      - /data
+`);
+            const config = await parseConfig('/test/config.yml');
+            expect(config.system?.metrics).toEqual({
+                file: '/textfile/babak-chevro.prom',
+                job: 'chevro',
+            });
+        });
+
         test('parses minimal SSH service', async () => {
             mockBunFile(`
 services:

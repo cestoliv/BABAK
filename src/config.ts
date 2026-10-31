@@ -28,6 +28,13 @@ const SystemConfigSchema = z.object({
             full_if_older_than: z.string().default('1M'),
         })
         .optional(),
+    // Per-service last-success times for the node_exporter textfile collector
+    metrics: z
+        .object({
+            file: z.string(),
+            job: z.string(),
+        })
+        .optional(),
     rclone: z
         .object({
             enabled: z.boolean().default(false),
